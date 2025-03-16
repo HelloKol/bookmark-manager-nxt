@@ -4,11 +4,9 @@ import ProfileDropdown from "@/components/ProfileDropdown";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useHotkeys } from "react-hotkeys-hook";
 
-interface SearchbarHeaderProps {
-  loading: boolean;
-}
+interface SearchbarHeaderProps {}
 
-const SearchbarHeader: React.FC<SearchbarHeaderProps> = ({ loading }) => {
+const SearchbarHeader: React.FC<SearchbarHeaderProps> = ({}) => {
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   // Handle ⌘K / Ctrl+K shortcut
@@ -28,7 +26,7 @@ const SearchbarHeader: React.FC<SearchbarHeaderProps> = ({ loading }) => {
             </kbd>
           </div>
         </div>
-        <ProfileDropdown loading={loading} />
+        <ProfileDropdown />
       </div>
 
       {/* Search Modal */}

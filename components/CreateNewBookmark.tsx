@@ -3,13 +3,11 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { auth } from "@/lib/firebase";
 
 interface CreateNewBookmarkProps {
-  setLoading: (loading: boolean) => void;
+  folderId: string;
 }
 
-const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
-  setLoading,
-}) => {
-  const [urls, setUrls] = useState<string[]>([]); // State to store array of URLs
+const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({ folderId }) => {
+  const [urls, setUrls] = useState<string[]>([]);
   const [textAreaValue, setTextAreaValue] = useState<string>("");
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
@@ -18,9 +16,6 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
 
     const user = auth.currentUser;
     if (!user) return alert("Not authenticated");
-
-    setLoading(true);
-    // setPreviews([]); // Clear previous previews
 
     try {
       urls.map(async (url) => {
@@ -32,7 +27,11 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ url: cleanUrl, userId: user.uid }), // Send the cleaned URL
+          body: JSON.stringify({
+            url: cleanUrl,
+            userId: user.uid,
+            folderId,
+          }),
         });
 
         const data = await res.json();
@@ -43,14 +42,12 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
         }
       });
 
-      // Wait for all metadata to be fetched
-      // const metadata = await Promise.all(metadataPromises);
-      // setPreviews(metadata); // Set the fetched metadata for all links
+      setUrls([]);
+      setTextAreaValue("");
+      setIsSearchModalOpen(false); // optionally close after save
     } catch (error) {
       console.error(error);
       alert("Something went wrong");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -68,12 +65,10 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
 
   // Handle keydown event to detect Enter or Shift + Enter
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
       // If Shift is not held, we prevent the default action to avoid new line and fetch metadata
-      if (!e.shiftKey) {
-        e.preventDefault();
-        handleFetchMetadata();
-      }
+      e.preventDefault();
+      handleFetchMetadata();
     }
   };
 

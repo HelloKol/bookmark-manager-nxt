@@ -8,7 +8,6 @@ import { db } from "@/lib/firebase";
 import ViewBasic from "@/components/svg/ViewBasic";
 import ViewCompact from "@/components/svg/ViewCompact";
 import ViewDetailed from "@/components/svg/ViewDetailed";
-import CreateNewBookmark from "@/components/CreateNewBookmark";
 import { useAppContext } from "@/context/AppProvider";
 
 interface Preview {
@@ -27,46 +26,71 @@ interface User {
   lastName?: string;
 }
 
-interface Props {
-  user: User | null;
-  setLoading: (loading: boolean) => void;
+interface Preview {
+  requestUrl: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: { url: string }[];
 }
 
-export default function Home({ user, setLoading }: Props) {
+interface Folder {
+  folderSlug: string;
+  folderName: string;
+  links: Preview[];
+}
+
+interface Props {
+  user: User | null;
+}
+
+export default function Home({ user }: Props) {
   const { searchTerm } = useAppContext();
-  const [savedLinks, setSavedLinks] = useState<Preview[]>([]); // State to store saved links
+  const [folders, setFolders] = useState<Folder[]>([]);
 
   useEffect(() => {
     if (!user) return;
 
-    const userRef = ref(db, `users/${user.uid}/links`);
+    const foldersRef = ref(db, `users/${user.uid}/folders`);
 
-    // Subscribe to real-time updates
-    const unsubscribe = onValue(userRef, (snapshot) => {
+    // Subscribe to folders and links inside them
+    const unsubscribe = onValue(foldersRef, (snapshot) => {
       if (snapshot.exists()) {
-        const links = Object.values(snapshot.val()) as Preview[];
-        setSavedLinks(links);
+        const foldersData = snapshot.val();
+        const folderArray: Folder[] = Object.entries(foldersData).map(
+          ([folderSlug, folderInfo]: any) => {
+            const folderName = folderInfo.folderName || "Untitled Folder";
+            const linksObj = folderInfo.links || {};
+            const links: Preview[] = Object.values(linksObj);
+
+            return { folderSlug, folderName, links };
+          }
+        );
+
+        setFolders(folderArray);
       } else {
-        setSavedLinks([]); // Clear saved links if the snapshot is empty
+        setFolders([]); // Clear folders if none exist
       }
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, [user]); // Re-run effect if the user changes
+  }, [user]);
 
   // Filter savedLinks based on searchTerm
-  const filteredLinks =
-    savedLinks.length > 0
-      ? savedLinks.filter((link) => {
-          const searchLower = searchTerm.toLowerCase();
-          return (
-            link.ogTitle?.toLowerCase().includes(searchLower) ||
-            link.ogDescription?.toLowerCase().includes(searchLower) ||
-            link.requestUrl.toLowerCase().includes(searchLower)
-          );
-        })
-      : [];
+  const filteredFolders = folders.map((folder) => {
+    const filteredLinks =
+      folder.links.length > 0
+        ? folder.links.filter((link) => {
+            const searchLower = searchTerm.toLowerCase();
+            return (
+              link.ogTitle?.toLowerCase().includes(searchLower) ||
+              link.ogDescription?.toLowerCase().includes(searchLower) ||
+              link.requestUrl.toLowerCase().includes(searchLower)
+            );
+          })
+        : [];
+
+    return { ...folder, links: filteredLinks };
+  });
 
   const tabs = [
     {
@@ -75,14 +99,21 @@ export default function Home({ user, setLoading }: Props) {
       icon: <ViewBasic className="w-10 h-10" />,
       content: (
         <>
+          {console.log(filteredFolders)}
           {/* Render saved links from the database */}
-          {filteredLinks.length > 0 && (
-            <div className="saved-links">
-              {filteredLinks.map((link, index) => (
-                <BookmarkPreviewBasic key={index} preview={link} />
-              ))}
+          {filteredFolders.map((folder) => (
+            <div key={folder.folderSlug} className="mb-6">
+              {folder.links.length > 0 ? (
+                <div className="saved-links">
+                  {folder.links.map((link, index) => (
+                    <BookmarkPreviewBasic key={index} preview={link} />
+                  ))}
+                </div>
+              ) : (
+                <p>No links in this folder</p>
+              )}
             </div>
-          )}
+          ))}
         </>
       ),
     },
@@ -93,13 +124,19 @@ export default function Home({ user, setLoading }: Props) {
       content: (
         <>
           {/* Render saved links from the database */}
-          {filteredLinks.length > 0 && (
-            <div className="saved-links">
-              {filteredLinks.map((link, index) => (
-                <BookmarkPreviewCompact key={index} preview={link} />
-              ))}
+          {filteredFolders.map((folder) => (
+            <div key={folder.folderSlug} className="mb-6">
+              {folder.links.length > 0 ? (
+                <div className="saved-links">
+                  {folder.links.map((link, index) => (
+                    <BookmarkPreviewCompact key={index} preview={link} />
+                  ))}
+                </div>
+              ) : (
+                <p>No links in this folder</p>
+              )}
             </div>
-          )}
+          ))}
         </>
       ),
     },
@@ -110,28 +147,23 @@ export default function Home({ user, setLoading }: Props) {
       content: (
         <>
           {/* Render saved links from the database */}
-          {filteredLinks.length > 0 && (
-            <div className="saved-links grid grid-cols-12 gap-4">
-              {filteredLinks.map((link, index) => (
-                <BookmarkPreviewDetailed key={index} preview={link} />
-              ))}
+          {filteredFolders.map((folder) => (
+            <div key={folder.folderSlug} className="mb-6">
+              {folder.links.length > 0 ? (
+                <div className="saved-links grid grid-cols-12 gap-4">
+                  {folder.links.map((link, index) => (
+                    <BookmarkPreviewDetailed key={index} preview={link} />
+                  ))}
+                </div>
+              ) : (
+                <p>No links in this folder</p>
+              )}
             </div>
-          )}
+          ))}
         </>
       ),
     },
   ];
 
-  return (
-    <div>
-      <div className="flex gap-4 justify-between items-center mb-4">
-        <h2 className="col-span-full text-lg font-bold">
-          All bookmarks{" "}
-          <span className="text-zinc-500">{filteredLinks.length}</span>
-        </h2>
-        <CreateNewBookmark setLoading={setLoading} />
-      </div>
-      <PreviewCardToggle tabs={tabs} ariaLabel="Manage your account" />
-    </div>
-  );
+  return <PreviewCardToggle tabs={tabs} ariaLabel="Manage your account" />;
 }

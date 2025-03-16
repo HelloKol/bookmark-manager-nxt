@@ -1,10 +1,20 @@
+// /api/saveLinks.ts
+
 import type { NextApiRequest, NextApiResponse } from "next";
 import ogs from "open-graph-scraper";
 import { ref, set, push, get } from "firebase/database"; // Realtime Database imports
-import { db } from "../../lib/firebase"; // Firestore imports
+import { db } from "../../lib/firebase";
 
-// Function to save link data to the database
-async function saveLinkToDatabase(userId: string, linkData: any) {
+// Function to save link data to a specific folder in the database
+async function saveLinkToDatabase(
+  userId: string,
+  folderId: string,
+  linkData: any
+) {
+  if (!folderId) {
+    throw new Error("folderId is required to save a link");
+  }
+
   // Ensure the user document exists
   const userRef = ref(db, `users/${userId}`);
   const userSnapshot = await get(userRef);
@@ -14,12 +24,24 @@ async function saveLinkToDatabase(userId: string, linkData: any) {
     await set(userRef, { createdAt: new Date().toISOString() });
   }
 
-  // Add link to the user's "links" subcollection
-  const linksRef = ref(db, `users/${userId}/links`);
+  // Ensure the folder exists
+  const folderRef = ref(db, `users/${userId}/folders/${folderId}`);
+  const folderSnapshot = await get(folderRef);
+
+  if (!folderSnapshot.exists()) {
+    console.log(`Folder ${folderId} does not exist. Creating...`);
+    await set(folderRef, {
+      folderName: "Untitled Folder", // Default name, can be updated later
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  // Add link to the folder's "links" subcollection
+  const linksRef = ref(db, `users/${userId}/folders/${folderId}/links`);
   const newLinkRef = push(linksRef); // Generate a unique ID for the link
   await set(newLinkRef, linkData);
 
-  console.log("Link saved with ID:", newLinkRef.key);
+  console.log(`Link saved under folder ${folderId} with ID:`, newLinkRef.key);
 
   return { id: newLinkRef.key, ...linkData };
 }
@@ -30,13 +52,13 @@ export default async function handler(
 ) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { url, userId } = req.body;
+  const { url, userId, folderId } = req.body;
 
-  if (!url || !userId) {
-    return res.status(400).json({ error: "Missing URL or userId" });
+  if (!url || !userId || !folderId) {
+    return res.status(400).json({ error: "Missing URL, userId, or folderId" });
   }
 
-  // If fetching Open Graph data fails, save the URL with minimal metadata
+  // Default link data in case Open Graph fails
   const linkData = {
     requestUrl: url,
     title: "",
@@ -51,18 +73,18 @@ export default async function handler(
     const { error, result } = await ogs(options);
 
     if (error) {
-      const savedLink = await saveLinkToDatabase(userId, linkData);
+      console.warn("Open Graph fetch error:", error);
+      const savedLink = await saveLinkToDatabase(userId, folderId, linkData);
       return res.status(200).json(savedLink);
     }
 
-    // Save link to the database
-    const savedLink = await saveLinkToDatabase(userId, result);
+    const savedLink = await saveLinkToDatabase(userId, folderId, result);
     return res.status(200).json(savedLink);
   } catch (error) {
     console.error("Error:", error);
 
     try {
-      const savedLink = await saveLinkToDatabase(userId, linkData);
+      const savedLink = await saveLinkToDatabase(userId, folderId, linkData);
       return res.status(200).json(savedLink);
     } catch (dbError) {
       console.error("Database error:", dbError);
