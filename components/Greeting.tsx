@@ -18,10 +18,10 @@ const Greeting: React.FC<GreetingProps> = ({ name }) => {
   };
 
   return (
-    <h1 className="text-4xl">
-      {" "}
-      {getGreeting()} {name}
-    </h1>
+    <div>
+      <h1 className="text-4xl">{getGreeting()}</h1>
+      <h2 className="text-2xl">{name}</h2>
+    </div>
   );
 };
 

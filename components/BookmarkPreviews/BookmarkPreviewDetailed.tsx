@@ -1,3 +1,4 @@
+import Link from "next/link";
 import React from "react";
 
 interface Preview {
@@ -9,29 +10,33 @@ interface Preview {
   ogUrl: string;
 }
 
-interface LinkPreviewCardProps {
+interface LinkPreviewDetailedProps {
   preview: Preview;
 }
 
-const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({ preview }) => {
+const LinkPreviewDetailed: React.FC<LinkPreviewDetailedProps> = ({
+  preview,
+}) => {
   // Extract the domain from the ogUrl
-  const ogUrl =
-    preview?.ogUrl !== "" && preview.ogUrl !== undefined
-      ? new URL(preview.ogUrl)
-      : { origin: "" };
-  const domain = ogUrl.origin; // This will give you "https://www.lookfantastic.com"
+  const ogUrl = preview?.ogUrl ? new URL(preview.ogUrl) : null;
+  const domain = ogUrl?.origin || "";
 
-  // Combine the domain with the relative favicon path
-  const faviconUrl = `${domain}${preview.favicon}`;
+  // Handle favicon URL construction
+  const faviconUrl = preview.favicon?.startsWith("https://")
+    ? preview.favicon
+    : `${domain}${preview.favicon?.startsWith("/") ? "" : "/"}${
+        preview.favicon || ""
+      }`;
 
   return (
-    <div
-      className="col-span-3"
+    <Link
+      href={preview.requestUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="col-span-4"
       style={{
-        border: "1px solid #ccc",
         borderRadius: "8px",
         padding: "1rem",
-        width: "400px",
         marginBottom: "1rem",
       }}
     >
@@ -53,10 +58,10 @@ const LinkPreviewCard: React.FC<LinkPreviewCardProps> = ({ preview }) => {
       />
 
       <h2>{preview.ogTitle}</h2>
-      <p>{preview.ogDescription}</p>
-      <p>Link: {preview.requestUrl}</p>
-    </div>
+      <p className="line-clamp-1 mb-2">{preview.ogDescription}</p>
+      <p>{preview.requestUrl}</p>
+    </Link>
   );
 };
 
-export default LinkPreviewCard;
+export default LinkPreviewDetailed;
