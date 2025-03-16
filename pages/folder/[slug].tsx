@@ -5,6 +5,7 @@ import { ref, onValue } from "firebase/database";
 import { useAppContext } from "@/context/AppProvider";
 import Bookmarks from "@/components/Bookmarks";
 import CreateNewBookmark from "@/components/CreateNewBookmark";
+import SearchbarHeader from "@/components/SearchbarHeader";
 
 interface FolderType {
   id: string;
@@ -57,11 +58,12 @@ const FolderPage: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4">
+      <SearchbarHeader />
       <h1 className="text-2xl font-bold mb-4">Folder: {folder.name}</h1>{" "}
       <div className="flex justify-end w-full mb-4">
         <CreateNewBookmark folderId={folder?.id} />
       </div>
-      <Bookmarks user={user} />
+      <Bookmarks user={user} folderId={folder.id} />
     </div>
   );
 };

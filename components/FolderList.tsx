@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { ref, onValue } from "firebase/database";
 import { db } from "@/lib/firebase";
+import { useAppContext } from "@/context/AppProvider";
 
 interface Folder {
   id: string;
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export default function FolderList({ user }: Props) {
+  const { searchTerm } = useAppContext();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -33,8 +35,6 @@ export default function FolderList({ user }: Props) {
     const unsubscribe = onValue(foldersRef, (snapshot) => {
       const data = snapshot.val();
       const folderArray: Folder[] = [];
-
-      console.log(data);
 
       if (data) {
         Object.entries(data).forEach(([key, value]: any) => {
@@ -53,6 +53,14 @@ export default function FolderList({ user }: Props) {
     return () => unsubscribe(); // cleanup listener on unmount
   }, [user]);
 
+  // Filter links based on searchTerm
+  const filteredLinks = searchTerm
+    ? folders.filter((folder) => {
+        const searchLower = searchTerm.toLowerCase();
+        return folder.name?.toLowerCase().includes(searchLower);
+      })
+    : folders;
+
   if (loading) return <p>Loading folders...</p>;
 
   return (
@@ -60,7 +68,7 @@ export default function FolderList({ user }: Props) {
       {folders.length === 0 && <p>No folders found.</p>}
 
       <div className="flex gap-4">
-        {folders.map((folder) => (
+        {filteredLinks.map((folder) => (
           <Link
             key={folder.id}
             href={`/folder/${folder.slug}`}

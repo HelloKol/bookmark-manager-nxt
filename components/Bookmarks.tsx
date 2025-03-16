@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ref, onValue } from "firebase/database";
+import { ref, onValue, remove } from "firebase/database";
 import BookmarkPreviewBasic from "@/components/BookmarkPreviews/BookmarkPreviewBasic";
 import BookmarkPreviewCompact from "@/components/BookmarkPreviews/BookmarkPreviewCompact";
 import BookmarkPreviewDetailed from "@/components/BookmarkPreviews/BookmarkPreviewDetailed";
@@ -26,94 +26,177 @@ interface User {
   lastName?: string;
 }
 
-interface Preview {
-  requestUrl: string;
-  ogTitle?: string;
-  ogDescription?: string;
-  ogImage?: { url: string }[];
-}
-
 interface Folder {
-  folderSlug: string;
-  folderName: string;
-  links: Preview[];
+  id: string;
+  name: string;
 }
 
 interface Props {
   user: User | null;
+  folderId: string;
 }
 
-export default function Home({ user }: Props) {
+export default function Bookmarks({ user, folderId }: Props) {
   const { searchTerm } = useAppContext();
+  const [links, setLinks] = useState<Preview[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
 
+  useEffect(() => {
+    if (!user || !folderId) return;
+
+    const folderRef = ref(db, `users/${user.uid}/folders/${folderId}`);
+
+    const unsubscribe = onValue(folderRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const folderData = snapshot.val();
+
+        const linksObj = folderData.links || {};
+        const linksArray: Preview[] = Object.values(linksObj);
+
+        setLinks(linksArray);
+      } else {
+        setLinks([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user, folderId]);
+
+  // Fetch all folders (to pass them into BookmarkPreviewBasic)
   useEffect(() => {
     if (!user) return;
 
     const foldersRef = ref(db, `users/${user.uid}/folders`);
 
-    // Subscribe to folders and links inside them
     const unsubscribe = onValue(foldersRef, (snapshot) => {
       if (snapshot.exists()) {
         const foldersData = snapshot.val();
-        const folderArray: Folder[] = Object.entries(foldersData).map(
-          ([folderSlug, folderInfo]: any) => {
-            const folderName = folderInfo.folderName || "Untitled Folder";
-            const linksObj = folderInfo.links || {};
-            const links: Preview[] = Object.values(linksObj);
 
-            return { folderSlug, folderName, links };
-          }
-        );
+        const foldersArray: Folder[] = Object.keys(foldersData).map((id) => ({
+          id,
+          ...foldersData[id],
+        }));
 
-        setFolders(folderArray);
+        setFolders(foldersArray);
       } else {
-        setFolders([]); // Clear folders if none exist
+        setFolders([]);
       }
     });
 
     return () => unsubscribe();
   }, [user]);
 
-  // Filter savedLinks based on searchTerm
-  const filteredFolders = folders.map((folder) => {
-    const filteredLinks =
-      folder.links.length > 0
-        ? folder.links.filter((link) => {
-            const searchLower = searchTerm.toLowerCase();
-            return (
-              link.ogTitle?.toLowerCase().includes(searchLower) ||
-              link.ogDescription?.toLowerCase().includes(searchLower) ||
-              link.requestUrl.toLowerCase().includes(searchLower)
-            );
-          })
-        : [];
+  // Delete link from current folder
+  const handleDelete = async (linkRequestUrl: string) => {
+    if (!user) return;
+    const folderRef = ref(db, `users/${user.uid}/folders/${folderId}/links`);
+    const snapshot = await onValueOnce(folderRef);
+    if (snapshot.exists()) {
+      const linksObj = snapshot.val();
+      const linkId = Object.keys(linksObj).find(
+        (key) => linksObj[key].requestUrl === linkRequestUrl
+      );
+      if (linkId) {
+        await remove(
+          ref(db, `users/${user.uid}/folders/${folderId}/links/${linkId}`)
+        );
+      }
+    }
+  };
 
-    return { ...folder, links: filteredLinks };
-  });
+  // Edit link: move to another folder and/or update requestUrl
+  const handleEdit = async (
+    oldLink: Preview,
+    newRequestUrl: string,
+    newFolderId: string
+  ) => {
+    if (!user) return;
+    const folderRef = ref(db, `users/${user.uid}/folders/${folderId}/links`);
+    const snapshot = await onValueOnce(folderRef);
+    if (!snapshot.exists()) return;
+
+    const linksObj = snapshot.val();
+
+    const linkId = Object.keys(linksObj).find(
+      (key) => linksObj[key].requestUrl === oldLink.requestUrl
+    );
+
+    if (!linkId) return;
+
+    if (folderId !== newFolderId) {
+      // MOVE link to a different folder
+      await remove(
+        ref(db, `users/${user.uid}/folders/${folderId}/links/${linkId}`)
+      );
+
+      // Call saveLinks API to save it to new folder with fresh OG data
+      const res = await fetch("/api/saveLinks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.uid,
+          folderId: newFolderId,
+          url: newRequestUrl,
+        }),
+      });
+
+      if (!res.ok) {
+        console.error("Failed to move and save link");
+      }
+    } else {
+      // UPDATE link in the same folder with fresh OG data
+      const res = await fetch("/api/updateLink", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.uid,
+          folderId,
+          linkId,
+          requestUrl: newRequestUrl,
+        }),
+      });
+
+      if (!res.ok) {
+        console.error("Failed to update link");
+      }
+    }
+  };
+
+  // Filter links based on searchTerm
+  const filteredLinks = searchTerm
+    ? links.filter((link) => {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+          link.ogTitle?.toLowerCase().includes(searchLower) ||
+          link.ogDescription?.toLowerCase().includes(searchLower) ||
+          link.requestUrl.toLowerCase().includes(searchLower)
+        );
+      })
+    : links;
 
   const tabs = [
     {
       value: "tab1",
-      label: "basic",
+      label: "Basic",
       icon: <ViewBasic className="w-10 h-10" />,
       content: (
         <>
-          {console.log(filteredFolders)}
-          {/* Render saved links from the database */}
-          {filteredFolders.map((folder) => (
-            <div key={folder.folderSlug} className="mb-6">
-              {folder.links.length > 0 ? (
-                <div className="saved-links">
-                  {folder.links.map((link, index) => (
-                    <BookmarkPreviewBasic key={index} preview={link} />
-                  ))}
-                </div>
-              ) : (
-                <p>No links in this folder</p>
-              )}
+          {filteredLinks.length > 0 ? (
+            <div className="saved-links">
+              {filteredLinks.map((link, index) => (
+                <BookmarkPreviewBasic
+                  key={index}
+                  preview={link}
+                  currentFolderId={folderId}
+                  folders={folders}
+                  onDelete={handleDelete}
+                  onEdit={handleEdit}
+                />
+              ))}
             </div>
-          ))}
+          ) : (
+            <p>No links in this folder</p>
+          )}
         </>
       ),
     },
@@ -123,20 +206,15 @@ export default function Home({ user }: Props) {
       icon: <ViewCompact className="w-10 h-10" />,
       content: (
         <>
-          {/* Render saved links from the database */}
-          {filteredFolders.map((folder) => (
-            <div key={folder.folderSlug} className="mb-6">
-              {folder.links.length > 0 ? (
-                <div className="saved-links">
-                  {folder.links.map((link, index) => (
-                    <BookmarkPreviewCompact key={index} preview={link} />
-                  ))}
-                </div>
-              ) : (
-                <p>No links in this folder</p>
-              )}
+          {filteredLinks.length > 0 ? (
+            <div className="saved-links">
+              {filteredLinks.map((link, index) => (
+                <BookmarkPreviewCompact key={index} preview={link} />
+              ))}
             </div>
-          ))}
+          ) : (
+            <p>No links in this folder</p>
+          )}
         </>
       ),
     },
@@ -146,24 +224,33 @@ export default function Home({ user }: Props) {
       icon: <ViewDetailed className="w-10 h-10" />,
       content: (
         <>
-          {/* Render saved links from the database */}
-          {filteredFolders.map((folder) => (
-            <div key={folder.folderSlug} className="mb-6">
-              {folder.links.length > 0 ? (
-                <div className="saved-links grid grid-cols-12 gap-4">
-                  {folder.links.map((link, index) => (
-                    <BookmarkPreviewDetailed key={index} preview={link} />
-                  ))}
-                </div>
-              ) : (
-                <p>No links in this folder</p>
-              )}
+          {filteredLinks.length > 0 ? (
+            <div className="saved-links grid grid-cols-12 gap-4">
+              {filteredLinks.map((link, index) => (
+                <BookmarkPreviewDetailed key={index} preview={link} />
+              ))}
             </div>
-          ))}
+          ) : (
+            <p>No links in this folder</p>
+          )}
         </>
       ),
     },
   ];
 
-  return <PreviewCardToggle tabs={tabs} ariaLabel="Manage your account" />;
+  return <PreviewCardToggle tabs={tabs} ariaLabel="View bookmarks" />;
+}
+
+// Firebase helper to get snapshot once
+async function onValueOnce(refObj: ReturnType<typeof ref>) {
+  return new Promise<any>((resolve, reject) => {
+    onValue(
+      refObj,
+      (snapshot) => {
+        resolve(snapshot);
+      },
+      (error) => reject(error),
+      { onlyOnce: true }
+    );
+  });
 }
