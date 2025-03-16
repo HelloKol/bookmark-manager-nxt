@@ -53,7 +53,7 @@ export default function Home() {
     <div style={{ padding: "2rem" }}>
       <SearchbarHeader loading={loading} />
       <Greeting name={`${user?.firstName ?? ""} ${user?.lastName ?? ""}`} />
-      <Bookmarks user={user} loading={loading} setLoading={setLoading} />
+      <Bookmarks user={user} setLoading={setLoading} />
     </div>
   );
 }

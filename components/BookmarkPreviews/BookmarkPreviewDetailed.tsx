@@ -22,41 +22,34 @@ const LinkPreviewDetailed: React.FC<LinkPreviewDetailedProps> = ({
   const domain = ogUrl?.origin || "";
 
   // Handle favicon URL construction
-  const faviconUrl = preview.favicon?.startsWith("https://")
-    ? preview.favicon
-    : `${domain}${preview.favicon?.startsWith("/") ? "" : "/"}${
-        preview.favicon || ""
-      }`;
+  const faviconUrl = preview.favicon
+    ? preview.favicon?.startsWith("https://")
+      ? preview.favicon
+      : `${domain}${preview.favicon?.startsWith("/") ? "" : "/"}${
+          preview.favicon || ""
+        }`
+    : "/placeholder-600x400.png";
 
   return (
     <Link
       href={preview.requestUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="col-span-4"
-      style={{
-        borderRadius: "8px",
-        padding: "1rem",
-        marginBottom: "1rem",
-      }}
+      className="col-span-4 bg-[#242424] p-5 rounded-lg mb-5"
     >
-      {preview.favicon && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          className="mb-5"
-          src={faviconUrl}
-          alt="Preview Image"
-          style={{ width: "50px" }}
-        />
-      )}
-
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        className="mb-5"
+        src={faviconUrl}
+        alt="Preview Image"
+        style={{ width: "50px" }}
+      />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={preview?.ogImage?.[0]?.url || "/placeholder-600x400.png"}
         alt="Preview Image"
         style={{ width: "100%", borderRadius: "8px" }}
       />
-
       <h2>{preview.ogTitle}</h2>
       <p className="line-clamp-1 mb-2">{preview.ogDescription}</p>
       <p>{preview.requestUrl}</p>

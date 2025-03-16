@@ -1,11 +1,16 @@
 import { cn } from "@/lib/utils";
 import * as React from "react";
+import { useAppContext } from "@/context/AppProvider";
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
+    const { searchTerm, setSearchTerm } = useAppContext();
+
     return (
       <input
         type={type}
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
         className={cn(
           "flex h-9 w-full rounded-lg bg-[#242424] px-5 py-7 text-md text-foreground shadow-sm shadow-black/5 transition-shadow placeholder:text-muted-foreground/70 outline-none disabled:cursor-not-allowed disabled:opacity-50",
           type === "search" &&

@@ -18,7 +18,7 @@ const Greeting: React.FC<GreetingProps> = ({ name }) => {
   };
 
   return (
-    <div>
+    <div className="mb-10">
       <h1 className="text-4xl">{getGreeting()}</h1>
       <h2 className="text-2xl">{name}</h2>
     </div>

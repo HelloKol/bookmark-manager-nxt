@@ -20,11 +20,13 @@ const LinkPreviewCompact: React.FC<LinkPreviewCompactProps> = ({ preview }) => {
   const domain = ogUrl?.origin || "";
 
   // Handle favicon URL construction
-  const faviconUrl = preview.favicon?.startsWith("https://")
-    ? preview.favicon
-    : `${domain}${preview.favicon?.startsWith("/") ? "" : "/"}${
-        preview.favicon || ""
-      }`;
+  const faviconUrl = preview.favicon
+    ? preview.favicon?.startsWith("https://")
+      ? preview.favicon
+      : `${domain}${preview.favicon?.startsWith("/") ? "" : "/"}${
+          preview.favicon || ""
+        }`
+    : "/placeholder-600x400.png";
 
   return (
     <Link
@@ -33,15 +35,13 @@ const LinkPreviewCompact: React.FC<LinkPreviewCompactProps> = ({ preview }) => {
       rel="noopener noreferrer"
       className="flex p-3 rounded-lg mb-4 items-center gap-4 bg-[#242424]"
     >
-      {preview.favicon && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          className="mb-5"
-          src={faviconUrl}
-          alt="Preview Image"
-          style={{ width: "50px" }}
-        />
-      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        className="mb-5"
+        src={faviconUrl}
+        alt="Preview Image"
+        style={{ width: "50px" }}
+      />
 
       <div>
         <p>{preview.ogTitle}</p>

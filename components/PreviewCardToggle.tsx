@@ -29,7 +29,7 @@ const TabsComponent: React.FC<TabsProps> = ({
           <Tabs.Trigger
             key={tab.value}
             value={tab.value}
-            className="flex-1 px-4 py-2 cursor-pointer"
+            className="flex-1 px-4 py-2 cursor-pointer TabsTrigger"
           >
             {tab.icon}
           </Tabs.Trigger>
