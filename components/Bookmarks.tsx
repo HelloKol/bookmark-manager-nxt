@@ -5,6 +5,9 @@ import BookmarkPreviewCompact from "@/components/BookmarkPreviews/BookmarkPrevie
 import BookmarkPreviewDetailed from "@/components/BookmarkPreviews/BookmarkPreviewDetailed";
 import PreviewCardToggle from "@/components/PreviewCardToggle";
 import { auth, db } from "@/lib/firebase";
+import ViewBasic from "@/components/svg/ViewBasic";
+import ViewCompact from "@/components/svg/ViewCompact";
+import ViewDetailed from "@/components/svg/ViewDetailed";
 
 interface Preview {
   favicon?: string;
@@ -119,7 +122,8 @@ export default function Home({ user, loading, setLoading }: Props) {
   const tabs = [
     {
       value: "tab1",
-      label: "Basic",
+      label: "basic",
+      icon: <ViewBasic className="w-10 h-10" />,
       content: (
         <>
           {/* Render saved links from the database */}
@@ -136,6 +140,7 @@ export default function Home({ user, loading, setLoading }: Props) {
     {
       value: "tab2",
       label: "Compact",
+      icon: <ViewCompact className="w-10 h-10" />,
       content: (
         <>
           {/* Render saved links from the database */}
@@ -152,6 +157,7 @@ export default function Home({ user, loading, setLoading }: Props) {
     {
       value: "tab3",
       label: "Detailed",
+      icon: <ViewDetailed className="w-10 h-10" />,
       content: (
         <>
           {/* Render saved links from the database */}
@@ -188,7 +194,16 @@ export default function Home({ user, loading, setLoading }: Props) {
         </button>
       </div>
 
-      <h2 className="col-span-full">Saved Links</h2>
+      <div className="flex gap-4 justify-between items-center">
+        <h2 className="col-span-full">All bookmarks</h2>
+        <button
+          className="rounded-md bg-slate-800 py-2 px-4 border border-transparent text-center text-sm text-white transition-all shadow-md hover:shadow-lg focus:bg-slate-700 focus:shadow-none active:bg-slate-700 hover:bg-slate-700 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none ml-2"
+          type="button"
+        >
+          Create new bookmark
+        </button>
+      </div>
+
       <PreviewCardToggle tabs={tabs} ariaLabel="Manage your account" />
     </div>
   );
