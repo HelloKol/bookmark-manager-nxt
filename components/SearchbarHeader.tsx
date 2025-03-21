@@ -3,8 +3,11 @@ import SearchInput from "@/components/SearchInput";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import { useHotkeys } from "react-hotkeys-hook";
 import Dialog from "@/components/RadixUI/Dialog";
+import { useAppContext } from "@/context/AppProvider";
+import Link from "next/link";
 
 const SearchbarHeader: React.FC = () => {
+  const { user } = useAppContext();
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   // Handle ⌘K / Ctrl+K shortcut
@@ -24,7 +27,13 @@ const SearchbarHeader: React.FC = () => {
             </kbd>
           </div>
         </div>
-        <ProfileDropdown />
+        {user ? (
+          <ProfileDropdown />
+        ) : (
+          <Link href="/login" className="text-blue-500">
+            Login
+          </Link>
+        )}
       </div>
 
       {/* Search Modal */}

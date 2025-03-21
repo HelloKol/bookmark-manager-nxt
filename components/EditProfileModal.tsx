@@ -88,7 +88,8 @@ const EditProfileModal: React.FC = () => {
   };
 
   const onSubmit = async (data: UserProfile) => {
-    try {
+    // Create a promise for the entire update process
+    const updateProfilePromise = (async () => {
       // If a new image is selected, upload it to Cloudinary
       let profileImageUrl = userProfile?.profileImageUrl;
       if (selectedImage && userProfile) {
@@ -103,18 +104,20 @@ const EditProfileModal: React.FC = () => {
 
       const userRef = ref(db, `users/${userProfile?.uid}`);
       await update(userRef, updates);
+    })();
 
-      toast.success("Profile updated successfully");
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to update profile");
-    }
+    // Attach the toast.promise to your promise
+    toast.promise(updateProfilePromise, {
+      pending: "Updating your profile...",
+      success: "Profile updated successfully!",
+      error: "Failed to update profile.",
+    });
   };
 
   return (
     <Dialog.Root>
       <Dialog.Trigger asChild>
-        <button className="px-4 py-2 bg-blue-500 text-white rounded">
+        <button className="cursor-pointer p-3 text-start w-full rounded-md text-[#AAAAAA] hover:text-white hover:bg-[#2E2E2E]">
           Edit Info
         </button>
       </Dialog.Trigger>

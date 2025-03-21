@@ -1,8 +1,9 @@
 import Link from "next/link";
 import React, { useState } from "react";
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import * as DropdownMenuRadix from "@radix-ui/react-dropdown-menu";
 import * as Select from "@radix-ui/react-select";
 import Dialog from "@/components/RadixUI/Dialog";
+import DropdownMenu from "@/components/RadixUI/DropdownMenu";
 
 interface Preview {
   favicon?: string;
@@ -62,30 +63,26 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
       </Link>
 
       {/* Dropdown Menu */}
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger asChild>
+      <DropdownMenu
+        trigger={
           <button className="p-0 m-0 outline-none ring-0 inline-flex items-center justify-center cursor-pointer">
             <span className="text-2xl">⋮</span>
           </button>
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Content
-          align="end"
-          className="bg-[#242424] w-44 shadow-md rounded-md p-2 text-sm"
+        }
+      >
+        <DropdownMenuRadix.Item
+          className="cursor-pointer p-3 rounded-md text-[#AAAAAA] hover:text-white hover:bg-[#2E2E2E]"
+          onSelect={() => setDialogOpen(true)}
         >
-          <DropdownMenu.Item
-            className="cursor-pointer p-3 rounded-md text-[#AAAAAA] hover:text-white hover:bg-[#2E2E2E]"
-            onSelect={() => setDialogOpen(true)}
-          >
-            Edit
-          </DropdownMenu.Item>
-          <DropdownMenu.Item
-            className="cursor-pointer p-3 rounded-md hover:bg-[#2E2E2E] text-red-500"
-            onSelect={handleDeleteClick}
-          >
-            Delete
-          </DropdownMenu.Item>
-        </DropdownMenu.Content>
-      </DropdownMenu.Root>
+          Edit
+        </DropdownMenuRadix.Item>
+        <DropdownMenuRadix.Item
+          className="cursor-pointer p-3 rounded-md hover:bg-[#2E2E2E] text-red-500"
+          onSelect={handleDeleteClick}
+        >
+          Delete
+        </DropdownMenuRadix.Item>
+      </DropdownMenu>
 
       {/* Edit Dialog */}
       <Dialog isDialogOpen={isDialogOpen} setDialogOpen={setDialogOpen}>
