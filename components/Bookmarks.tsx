@@ -9,6 +9,7 @@ import ViewBasic from "@/components/svg/ViewBasic";
 import ViewCompact from "@/components/svg/ViewCompact";
 import ViewDetailed from "@/components/svg/ViewDetailed";
 import { useAppContext } from "@/context/AppProvider";
+import { toast } from "react-toastify";
 
 interface Preview {
   favicon?: string;
@@ -88,20 +89,57 @@ export default function Bookmarks({ user, folderId }: Props) {
 
   // Delete link from current folder
   const handleDelete = async (linkRequestUrl: string) => {
-    if (!user) return;
-    const folderRef = ref(db, `users/${user.uid}/folders/${folderId}/links`);
-    const snapshot = await onValueOnce(folderRef);
-    if (snapshot.exists()) {
-      const linksObj = snapshot.val();
-      const linkId = Object.keys(linksObj).find(
-        (key) => linksObj[key].requestUrl === linkRequestUrl
-      );
-      if (linkId) {
+    if (!user) {
+      toast.error("You must be logged in to delete a link");
+      return;
+    }
+
+    // Wrap the deletion logic in a promise
+    const updateBookmark = new Promise<void>(async (resolve, reject) => {
+      try {
+        const folderRef = ref(
+          db,
+          `users/${user.uid}/folders/${folderId}/links`
+        );
+        const snapshot = await onValueOnce(folderRef);
+
+        if (!snapshot.exists()) {
+          reject(new Error("No links found"));
+          return;
+        }
+
+        const linksObj = snapshot.val();
+        const linkId = Object.keys(linksObj).find(
+          (key) => linksObj[key].requestUrl === linkRequestUrl
+        );
+
+        if (!linkId) {
+          reject(new Error("Link not found"));
+          return;
+        }
+
         await remove(
           ref(db, `users/${user.uid}/folders/${folderId}/links/${linkId}`)
         );
+        resolve();
+      } catch (error) {
+        reject(error);
       }
-    }
+    });
+
+    // Use toast.promise to handle loading, success, and error states
+    toast.promise(updateBookmark, {
+      pending: "Deleting link...",
+      success: "Link deleted successfully!",
+      error: {
+        render: ({ data }) => {
+          if (data instanceof Error) {
+            return data.message || "Error deleting link";
+          }
+          return "Error deleting link";
+        },
+      },
+    });
   };
 
   // Edit link: move to another folder and/or update requestUrl
@@ -110,56 +148,88 @@ export default function Bookmarks({ user, folderId }: Props) {
     newRequestUrl: string,
     newFolderId: string
   ) => {
-    if (!user) return;
-    const folderRef = ref(db, `users/${user.uid}/folders/${folderId}/links`);
-    const snapshot = await onValueOnce(folderRef);
-    if (!snapshot.exists()) return;
-
-    const linksObj = snapshot.val();
-
-    const linkId = Object.keys(linksObj).find(
-      (key) => linksObj[key].requestUrl === oldLink.requestUrl
-    );
-
-    if (!linkId) return;
-
-    if (folderId !== newFolderId) {
-      // MOVE link to a different folder
-      await remove(
-        ref(db, `users/${user.uid}/folders/${folderId}/links/${linkId}`)
-      );
-
-      // Call saveLinks API to save it to new folder with fresh OG data
-      const res = await fetch("/api/saveLinks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.uid,
-          folderId: newFolderId,
-          url: newRequestUrl,
-        }),
-      });
-
-      if (!res.ok) {
-        console.error("Failed to move and save link");
-      }
-    } else {
-      // UPDATE link in the same folder with fresh OG data
-      const res = await fetch("/api/updateLink", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.uid,
-          folderId,
-          linkId,
-          requestUrl: newRequestUrl,
-        }),
-      });
-
-      if (!res.ok) {
-        console.error("Failed to update link");
-      }
+    if (!user) {
+      toast.error("You must be logged in to delete a link");
+      return;
     }
+
+    // Wrap the deletion logic in a promise
+    const updateBookmark = new Promise<void>(async (resolve, reject) => {
+      try {
+        const folderRef = ref(
+          db,
+          `users/${user.uid}/folders/${folderId}/links`
+        );
+        const snapshot = await onValueOnce(folderRef);
+        if (!snapshot.exists()) return;
+
+        const linksObj = snapshot.val();
+
+        const linkId = Object.keys(linksObj).find(
+          (key) => linksObj[key].requestUrl === oldLink.requestUrl
+        );
+
+        if (!linkId) return;
+
+        if (folderId !== newFolderId) {
+          // MOVE link to a different folder
+          await remove(
+            ref(db, `users/${user.uid}/folders/${folderId}/links/${linkId}`)
+          );
+
+          // Call saveLinks API to save it to new folder with fresh OG data
+          const res = await fetch("/api/saveLinks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.uid,
+              folderId: newFolderId,
+              url: newRequestUrl,
+            }),
+          });
+
+          if (!res.ok) {
+            reject(new Error("Failed to move and save link"));
+          }
+
+          resolve();
+        } else {
+          // UPDATE link in the same folder with fresh OG data
+          const res = await fetch("/api/updateLink", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.uid,
+              folderId,
+              linkId,
+              requestUrl: newRequestUrl,
+            }),
+          });
+
+          if (!res.ok) {
+            reject(new Error("Failed to update link"));
+          }
+
+          resolve();
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+
+    // Use toast.promise to handle loading, success, and error states
+    toast.promise(updateBookmark, {
+      pending: "Updating link...",
+      success: "Link udpdated successfully!",
+      error: {
+        render: ({ data }) => {
+          if (data instanceof Error) {
+            return data.message || "Error Updating link";
+          }
+          return "Error Updating link";
+        },
+      },
+    });
   };
 
   // Filter links based on searchTerm

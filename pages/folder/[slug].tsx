@@ -6,6 +6,8 @@ import { useAppContext } from "@/context/AppProvider";
 import Bookmarks from "@/components/Bookmarks";
 import CreateNewBookmark from "@/components/CreateNewBookmark";
 import SearchbarHeader from "@/components/SearchbarHeader";
+import DeleteAllBookmark from "@/components/DeleteAllBookmark";
+import ImportBookmark from "@/components/ImportBookmark";
 
 interface FolderType {
   id: string;
@@ -61,7 +63,9 @@ const FolderPage: React.FC = () => {
       <SearchbarHeader />
       <h1 className="text-2xl font-bold mb-4">Folder: {folder.name}</h1>{" "}
       <div className="flex justify-end w-full mb-4">
+        <DeleteAllBookmark folderId={folder.id} />
         <CreateNewBookmark folderId={folder?.id} />
+        <ImportBookmark folderId={folder?.id} />
       </div>
       <Bookmarks user={user} folderId={folder.id} />
     </div>

@@ -7,6 +7,7 @@ interface AppContextType {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   user: User | null;
+  userLoading: "loading" | "error" | "success";
 }
 
 interface User {
@@ -23,9 +24,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [user, setUser] = useState<User | null>(null);
+  const [userLoading, setIsUserLoading] = useState<
+    "loading" | "error" | "success"
+  >("loading");
 
   // Listen for authentication state changes
   useEffect(() => {
+    setIsUserLoading("loading");
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         // Fetch additional user details from Realtime Database
@@ -47,8 +53,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
             });
           }
         });
+
+        setIsUserLoading("success");
       } else {
         setUser(null); // Clear user state if not authenticated
+        setIsUserLoading("success");
       }
     });
 
@@ -57,7 +66,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   return (
-    <AppContext.Provider value={{ searchTerm, setSearchTerm, user }}>
+    <AppContext.Provider
+      value={{ searchTerm, setSearchTerm, user, userLoading }}
+    >
       {children}
     </AppContext.Provider>
   );

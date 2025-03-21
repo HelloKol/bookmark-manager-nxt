@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { auth } from "@/lib/firebase";
+import { toast } from "react-toastify";
 
 interface CreateNewBookmarkProps {
   folderId: string;
@@ -11,44 +12,64 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({ folderId }) => {
   const [textAreaValue, setTextAreaValue] = useState<string>("");
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
-  const handleFetchMetadata = async () => {
+  const handleCloseModal = (e: boolean) => {
+    setUrls([]);
+    setTextAreaValue("");
+    setIsSearchModalOpen(false);
+  };
+
+  const handleCreateBookmark = async () => {
     if (urls.length === 0) return;
 
     const user = auth.currentUser;
     if (!user) return alert("Not authenticated");
 
-    try {
-      urls.map(async (url) => {
-        // Remove trailing slash from the URL if it exists
-        const cleanUrl = url.replace(/\/$/, "");
+    // Wrap the entire operation in a promise
+    const createBookmarksPromise = new Promise<void>(
+      async (resolve, reject) => {
+        try {
+          // Map through URLs and save them
+          const savePromises = urls.map(async (url) => {
+            const cleanUrl = url.replace(/\/$/, "");
 
-        const res = await fetch("/api/saveLinks", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            url: cleanUrl,
-            userId: user.uid,
-            folderId,
-          }),
-        });
+            const res = await fetch("/api/saveLinks", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                url: cleanUrl,
+                userId: user.uid,
+                folderId,
+              }),
+            });
 
-        const data = await res.json();
-        if (res.ok) {
-          return data;
-        } else {
-          throw new Error(data.error);
+            if (!res.ok) {
+              const data = await res.json();
+              throw new Error(data.error || "Failed to save link");
+            }
+          });
+
+          // Wait for all promises to resolve
+          await Promise.all(savePromises);
+
+          resolve();
+        } catch (error) {
+          reject(error);
         }
-      });
+      }
+    );
 
-      setUrls([]);
-      setTextAreaValue("");
-      setIsSearchModalOpen(false); // optionally close after save
-    } catch (error) {
-      console.error(error);
-      alert("Something went wrong");
-    }
+    // Use toast.promise to handle loading, success, and error states
+    toast.promise(createBookmarksPromise, {
+      pending: "Saving bookmarks...",
+      success: {
+        render: "Bookmarks saved successfully!",
+      },
+      error: {
+        render: "Error saving bookmarks",
+      },
+    });
   };
 
   // Handle change in textarea (split URLs by newline)
@@ -68,7 +89,8 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({ folderId }) => {
     if (e.key === "Enter" && !e.shiftKey) {
       // If Shift is not held, we prevent the default action to avoid new line and fetch metadata
       e.preventDefault();
-      handleFetchMetadata();
+      handleCloseModal(false);
+      handleCreateBookmark();
     }
   };
 
@@ -83,7 +105,7 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({ folderId }) => {
       </button>
 
       {/* Create Modal */}
-      <Dialog.Root open={isSearchModalOpen} onOpenChange={setIsSearchModalOpen}>
+      <Dialog.Root open={isSearchModalOpen} onOpenChange={handleCloseModal}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0" />
           <Dialog.Content className="fixed inset-0 w-screen h-screen">
@@ -97,7 +119,7 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({ folderId }) => {
 
             <button
               className="fixed top-5 right-5 z-1 bg-amber-600 p-4 cursor-pointer"
-              onClick={() => setIsSearchModalOpen(false)}
+              onClick={() => handleCloseModal(false)}
             >
               Close
             </button>

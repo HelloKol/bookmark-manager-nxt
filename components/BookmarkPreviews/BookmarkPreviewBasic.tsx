@@ -64,19 +64,22 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
       {/* Dropdown Menu */}
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
-          <button className="p-2 rounded bg-gray-700 hover:bg-gray-600 text-white">
-            ⋮
+          <button className="p-0 m-0 outline-none ring-0 inline-flex items-center justify-center cursor-pointer">
+            <span className="text-2xl">⋮</span>
           </button>
         </DropdownMenu.Trigger>
-        <DropdownMenu.Content className="bg-white shadow-md rounded-md p-2 text-sm">
+        <DropdownMenu.Content
+          align="end"
+          className="bg-[#242424] w-44 shadow-md rounded-md p-2 text-sm"
+        >
           <DropdownMenu.Item
-            className="cursor-pointer p-2 hover:bg-gray-100"
+            className="cursor-pointer p-3 rounded-md text-[#AAAAAA] hover:text-white hover:bg-[#2E2E2E]"
             onSelect={() => setDialogOpen(true)}
           >
             Edit
           </DropdownMenu.Item>
           <DropdownMenu.Item
-            className="cursor-pointer p-2 hover:bg-gray-100 text-red-600"
+            className="cursor-pointer p-3 rounded-md hover:bg-[#2E2E2E] text-red-500"
             onSelect={handleDeleteClick}
           >
             Delete
@@ -87,48 +90,60 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
       {/* Edit Dialog */}
       <Dialog.Root open={isDialogOpen} onOpenChange={setDialogOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 w-[90%] max-w-md bg-white p-6 rounded-md shadow-md -translate-x-1/2 -translate-y-1/2 space-y-4">
-            <Dialog.Title className="text-lg font-bold">
-              Edit Bookmark
-            </Dialog.Title>
-            <div className="flex flex-col space-y-2">
-              <label className="text-sm">URL</label>
-              <input
-                type="text"
-                value={newUrl}
-                onChange={(e) => setNewUrl(e.target.value)}
-                className="border p-2 rounded"
-              />
+          <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 w-[90vw] max-w-md -translate-x-1/2 -translate-y-1/2 shadow-lg">
+            <div className="bg-[#242424] rounded-lg shadow-lg p-6 w-96">
+              <Dialog.Title className="text-lg font-bold mb-2">
+                Edit Bookmark
+              </Dialog.Title>
 
-              <label className="text-sm">Folder</label>
-              <Select.Root
-                value={selectedFolderId}
-                onValueChange={setSelectedFolderId}
-              >
-                <Select.Trigger className="border p-2 rounded text-left">
-                  {folders.find((f) => f.id === selectedFolderId)?.name ||
-                    "Select folder"}
-                </Select.Trigger>
-                <Select.Content className="bg-white shadow-md rounded">
-                  {folders.map((folder) => (
-                    <Select.Item
-                      key={folder.id}
-                      value={folder.id}
-                      className="p-2 hover:bg-gray-100"
-                    >
-                      {folder.name}
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Root>
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm">URL</label>
+                <input
+                  type="text"
+                  placeholder="Enter URL"
+                  value={newUrl}
+                  onChange={(e) => setNewUrl(e.target.value)}
+                  className="w-full p-3 rounded mb-4 bg-[#353536] hover:bg-[#2e2e2e] outline-none"
+                />
 
-              <button
-                onClick={handleEditSubmit}
-                className="mt-4 bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
-              >
-                Save
-              </button>
+                <label className="text-sm">Folder</label>
+                <Select.Root
+                  value={selectedFolderId}
+                  onValueChange={setSelectedFolderId}
+                >
+                  <Select.Trigger className="border p-2 rounded text-left">
+                    {folders.find((f) => f.id === selectedFolderId)?.name ||
+                      "Select folder"}
+                  </Select.Trigger>
+                  <Select.Content className="bg-[#2E2E2E] shadow-md rounded">
+                    {folders.map((folder) => (
+                      <Select.Item
+                        key={folder.id}
+                        value={folder.id}
+                        className="p-2 hover:bg-[#353536]"
+                      >
+                        {folder.name}
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select.Root>
+
+                <div className="flex justify-end">
+                  <button
+                    className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded mr-2"
+                    onClick={() => setDialogOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded"
+                    onClick={handleEditSubmit}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
             </div>
           </Dialog.Content>
         </Dialog.Portal>
