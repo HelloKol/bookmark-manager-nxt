@@ -1,13 +1,11 @@
 import React, { useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import { ref, push, set } from "firebase/database";
 import { auth, db } from "@/lib/firebase";
 import { generateSlug } from "@/lib/utils";
 import { toast } from "react-toastify";
+import Dialog from "@/components/RadixUI/Dialog";
 
-interface CreateNewFolderProps {}
-
-const CreateNewFolder: React.FC<CreateNewFolderProps> = ({}) => {
+const CreateNewFolder: React.FC = () => {
   const [folderName, setFolderName] = useState("");
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
 
@@ -69,39 +67,35 @@ const CreateNewFolder: React.FC<CreateNewFolderProps> = ({}) => {
       </button>
 
       {/* Folder Modal */}
-      <Dialog.Root open={isFolderModalOpen} onOpenChange={setIsFolderModalOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 w-[90vw] max-w-md -translate-x-1/2 -translate-y-1/2 shadow-lg">
-            <div className="bg-[#242424] rounded-lg shadow-lg p-6 w-96">
-              <h2 className="text-lg font-semibold mb-4">Create New Folder</h2>
+      <Dialog
+        isDialogOpen={isFolderModalOpen}
+        setDialogOpen={setIsFolderModalOpen}
+      >
+        <h2 className="text-lg font-semibold mb-4">Create New Folder</h2>
 
-              <input
-                type="text"
-                placeholder="Folder name"
-                value={folderName}
-                onChange={(e) => setFolderName(e.target.value)}
-                className="w-full p-3 rounded mb-4 bg-[#353536] hover:bg-[#2e2e2e] outline-none"
-              />
+        <input
+          type="text"
+          placeholder="Folder name"
+          value={folderName}
+          onChange={(e) => setFolderName(e.target.value)}
+          className="w-full p-3 rounded mb-4 bg-[#353536] hover:bg-[#2e2e2e] outline-none"
+        />
 
-              <div className="flex justify-end">
-                <button
-                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded mr-2"
-                  onClick={() => setIsFolderModalOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded"
-                  onClick={handleCreateFolder}
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+        <div className="flex justify-end">
+          <button
+            className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded mr-2"
+            onClick={() => setIsFolderModalOpen(false)}
+          >
+            Cancel
+          </button>
+          <button
+            className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded"
+            onClick={handleCreateFolder}
+          >
+            Save
+          </button>
+        </div>
+      </Dialog>
     </>
   );
 };

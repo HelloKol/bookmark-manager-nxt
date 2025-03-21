@@ -1,13 +1,21 @@
 import * as React from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { logout } from "@/lib/auth";
+import EditProfileModal from "./EditProfileModal";
+import { useAppContext } from "@/context/AppProvider";
 
-const ProfileDropdown = ({}: {}) => {
+const ProfileDropdown = () => {
+  const { user } = useAppContext();
+
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <div className="w-14 rounded-full overflow-hidden select-none cursor-pointer">
-          <img src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
+        <div className="w-14 h-14 rounded-full overflow-hidden select-none cursor-pointer">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={user?.profileImageUrl || "https://placehold.co/600x400"}
+            alt={""}
+          />
         </div>
       </DropdownMenu.Trigger>
 
@@ -16,6 +24,7 @@ const ProfileDropdown = ({}: {}) => {
           className="min-w-[220px] rounded-md bg-[#242424] shadow-[0px_10px_38px_-10px_rgba(22,_23,_24,_0.35),_0px_10px_20px_-15px_rgba(22,_23,_24,_0.2)] will-change-[opacity,transform] data-[side=bottom]:animate-slideUpAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=top]:animate-slideDownAndFade"
           sideOffset={5}
         >
+          <EditProfileModal />
           <DropdownMenu.Item className="group w-full relative flex select-none items-center rounded-[3px] text-[13px] leading-none text-violet11 outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-violet9 data-[disabled]:text-mauve8 data-[highlighted]:text-violet1">
             <button
               type="button"

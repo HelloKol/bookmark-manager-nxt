@@ -1,12 +1,10 @@
 import React, { useState } from "react";
 import SearchInput from "@/components/SearchInput";
 import ProfileDropdown from "@/components/ProfileDropdown";
-import * as Dialog from "@radix-ui/react-dialog";
 import { useHotkeys } from "react-hotkeys-hook";
+import Dialog from "@/components/RadixUI/Dialog";
 
-interface SearchbarHeaderProps {}
-
-const SearchbarHeader: React.FC<SearchbarHeaderProps> = ({}) => {
+const SearchbarHeader: React.FC = () => {
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   // Handle ⌘K / Ctrl+K shortcut
@@ -30,18 +28,12 @@ const SearchbarHeader: React.FC<SearchbarHeaderProps> = ({}) => {
       </div>
 
       {/* Search Modal */}
-      <Dialog.Root open={isSearchModalOpen} onOpenChange={setIsSearchModalOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 w-[90vw] max-w-md -translate-x-1/2 -translate-y-1/2 shadow-lg">
-            <SearchInput
-              placeholder="Search bookmarks"
-              type="search"
-              autoFocus
-            />
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <Dialog
+        isDialogOpen={isSearchModalOpen}
+        setDialogOpen={setIsSearchModalOpen}
+      >
+        <SearchInput placeholder="Search bookmarks" type="search" autoFocus />
+      </Dialog>
     </>
   );
 };

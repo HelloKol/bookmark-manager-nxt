@@ -12,7 +12,7 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({ folderId }) => {
   const [textAreaValue, setTextAreaValue] = useState<string>("");
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
-  const handleCloseModal = (e: boolean) => {
+  const handleCloseModal = () => {
     setUrls([]);
     setTextAreaValue("");
     setIsSearchModalOpen(false);
@@ -89,7 +89,7 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({ folderId }) => {
     if (e.key === "Enter" && !e.shiftKey) {
       // If Shift is not held, we prevent the default action to avoid new line and fetch metadata
       e.preventDefault();
-      handleCloseModal(false);
+      handleCloseModal();
       handleCreateBookmark();
     }
   };
@@ -119,7 +119,7 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({ folderId }) => {
 
             <button
               className="fixed top-5 right-5 z-1 bg-amber-600 p-4 cursor-pointer"
-              onClick={() => handleCloseModal(false)}
+              onClick={handleCloseModal}
             >
               Close
             </button>

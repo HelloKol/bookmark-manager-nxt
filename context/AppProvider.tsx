@@ -15,6 +15,7 @@ interface User {
   email: string | null;
   firstName?: string;
   lastName?: string;
+  profileImageUrl?: string;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -44,6 +45,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
               email: firebaseUser.email,
               firstName: userData.firstName,
               lastName: userData.lastName,
+              profileImageUrl: userData.profileImageUrl,
             });
           } else {
             // If no additional details are found, set only the basic user info
