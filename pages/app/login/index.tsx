@@ -6,7 +6,7 @@ import router from "next/router";
 import Link from "next/link";
 import { FirebaseError } from "firebase/app";
 import { toast } from "react-toastify";
-import { login } from "../../lib/auth";
+import { login } from "../../../lib/auth";
 
 import { Button } from "@/components/LoginForm/button";
 import { Checkbox } from "@/components/LoginForm/checkbox";

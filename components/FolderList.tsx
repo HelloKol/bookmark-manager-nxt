@@ -44,7 +44,7 @@ export default function FolderList({ user }: Props) {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/macos-folder.png"
+              src="/static/macos-folder.png"
               alt="Vercel Logo"
               className="block w-32 cursor-pointer"
             />

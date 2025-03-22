@@ -30,7 +30,10 @@ const SearchbarHeader: React.FC = () => {
         {user ? (
           <ProfileDropdown />
         ) : (
-          <Link href="/login" className="text-blue-500">
+          <Link
+            href={`${process.env.NEXT_PUBLIC_SUB_DOMAIN}/login`}
+            className="text-blue-500"
+          >
             Login
           </Link>
         )}

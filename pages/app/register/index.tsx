@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { signup } from "../../lib/auth";
+import { signup } from "../../../lib/auth";
 
 import { Button } from "@/components/LoginForm/button";
 import { Checkbox } from "@/components/LoginForm/checkbox";
