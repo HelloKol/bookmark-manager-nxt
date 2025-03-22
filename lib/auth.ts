@@ -5,6 +5,8 @@ import {
   signOut,
   onAuthStateChanged,
 } from "firebase/auth";
+import { User } from "firebase/auth";
+import { ref, set } from "firebase/database";
 
 export const signup = async (
   email: string,
@@ -40,7 +42,7 @@ export const login = async (email: string, password: string) => {
     const idToken = await userCredential.user.getIdToken();
 
     // Set session cookie
-    await fetch("/api/login", {
+    const response = await fetch("/api/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -48,13 +50,67 @@ export const login = async (email: string, password: string) => {
       body: JSON.stringify({ idToken }),
     });
 
-    // Redirect to dashboard
-    // router.push("/dashboard");
+    return response;
   } catch (error) {
     console.error("Login error:", error);
     alert("Login failed. Please check your credentials.");
   }
 };
+
+// export const login = async (email: string, password: string) => {
+//   try {
+//     const userCredential = await signInWithEmailAndPassword(
+//       auth,
+//       email,
+//       password
+//     );
+//     const idToken = await userCredential.user.getIdToken();
+
+//     const response = await fetch("/api/login", {
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/json",
+//       },
+//       body: JSON.stringify({ idToken }),
+//     });
+
+//     if (!response.ok) {
+//       throw new Error("Failed to create session cookie");
+//     }
+
+//     return userCredential;
+//   } catch (error: any) {
+//     console.error("Login error:", error);
+
+//     // You can throw a more specific error for your UI to catch
+//     throw new Error(
+//       error?.message || "An unexpected error occurred during login"
+//     );
+//   }
+// };
+
+// export const login = async (email: string, password: string) => {
+//   const userCredential = await signInWithEmailAndPassword(
+//     auth,
+//     email,
+//     password
+//   );
+//   const idToken = await userCredential.user.getIdToken();
+
+//   const response = await fetch("/api/login", {
+//     method: "POST",
+//     headers: {
+//       "Content-Type": "application/json",
+//     },
+//     body: JSON.stringify({ idToken }),
+//   });
+
+//   if (!response.ok) {
+//     throw new Error("Failed to create session cookie");
+//   }
+
+//   return userCredential;
+// };
 
 export const logout = async () => {
   try {
@@ -72,9 +128,6 @@ export const logout = async () => {
     alert("Logout failed. Please try again.");
   }
 };
-
-import { User } from "firebase/auth";
-import { ref, set } from "firebase/database";
 
 export const onAuth = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
