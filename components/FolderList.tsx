@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { useAppContext } from "@/context/AppProvider";
 import { useFetchFolders } from "@/hooks/data/useFetchFolders";
+import ShareFolder from "./ShareFolder";
 
 interface User {
   uid: string;
@@ -37,19 +38,25 @@ export default function FolderList({ user }: Props) {
 
       <div className="flex gap-4">
         {filteredFolders.map((folder) => (
-          <Link
-            key={folder.id}
-            href={`/folder/${folder.slug}`}
-            className="block col-span-2 p-4 text-white  ursor-pointer"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/static/macos-folder.png"
-              alt="Vercel Logo"
-              className="block w-32 cursor-pointer"
+          <div key={folder.id}>
+            <ShareFolder
+              userId={user?.uid || ""}
+              folderId={folder.id}
+              folderData={folder}
             />
-            {folder.name}
-          </Link>
+            <Link
+              href={`/folder/${folder.slug}`}
+              className="block col-span-2 p-4 text-white cursor-pointer"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/static/macos-folder.png"
+                alt="Vercel Logo"
+                className="block w-32 cursor-pointer"
+              />
+              {folder.name}
+            </Link>
+          </div>
         ))}
       </div>
     </div>

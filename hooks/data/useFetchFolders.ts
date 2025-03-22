@@ -6,6 +6,7 @@ interface Folder {
   id: string;
   name: string;
   slug: string;
+  links?: any[]; // Optional: Include links if needed
 }
 
 type FetchState =
@@ -27,11 +28,6 @@ export const useFetchFolders = (
       return;
     }
 
-    // if (!userId) {
-    //   setState({ status: "success", folders: [] });
-    //   return;
-    // }
-
     const foldersRef = ref(db, `users/${userId}/folders`);
     const unsubscribe = onValue(
       foldersRef,
@@ -42,6 +38,7 @@ export const useFetchFolders = (
               id: key,
               name: value.name,
               slug: value.slug,
+              links: value.links, // Optional: Include links if needed
             }))
           : [];
 
