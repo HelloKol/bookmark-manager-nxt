@@ -1,15 +1,25 @@
 import * as React from "react";
-import * as DropdownMenuRadix from "@radix-ui/react-dropdown-menu";
 import { logout } from "@/lib/auth";
 import EditProfileModal from "./EditProfileModal";
 import { useAppContext } from "@/context/AppProvider";
-import DropdownMenu from "@/components/RadixUI/DropdownMenu";
-import { useRouter } from "next/router";
 import { toast } from "react-toastify";
+import {
+  DropdownMenuRoot,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { useRouter } from "next/router";
+import { useState } from "react";
+import Image from "next/image";
 
 const ProfileDropdown = () => {
   const router = useRouter();
   const { user } = useAppContext();
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
 
   const handleLogout = async () => {
     const logoutPromise = new Promise<void>(async (resolve, reject) => {
@@ -39,27 +49,50 @@ const ProfileDropdown = () => {
   };
 
   return (
-    <DropdownMenu
-      trigger={
-        <div className="w-14 h-14 rounded-full overflow-hidden select-none cursor-pointer">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={user?.profileImageUrl || "https://placehold.co/600x400"}
-            alt={""}
-          />
-        </div>
-      }
-    >
-      <EditProfileModal />
-      <DropdownMenuRadix.Item
-        className="cursor-pointer p-3 rounded-md hover:bg-[#2E2E2E] text-red-500 outline-none"
-        onClick={handleLogout}
-      >
-        <button type="button" className="cursor-pointer" onClick={handleLogout}>
-          Logout
-        </button>
-      </DropdownMenuRadix.Item>
-    </DropdownMenu>
+    <>
+      <DropdownMenuRoot>
+        <DropdownMenuTrigger asChild>
+          <div className="w-14 h-14 rounded-full overflow-hidden select-none cursor-pointer">
+            <Image
+              width={150}
+              height={150}
+              src={user?.profileImageUrl || "https://placehold.co/600x400"}
+              alt={""}
+            />
+          </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="end" forceMount>
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium leading-none">
+                {user?.firstName} {user?.lastName}
+              </p>
+              <p className="text-xs leading-none text-muted-foreground">
+                {user?.email}
+              </p>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            <DropdownMenuItem onClick={() => setIsFolderModalOpen(true)}>
+              <span>Profile</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <span>Settings</span>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleLogout} className="text-red-500">
+            <span>Log out</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenuRoot>
+
+      <EditProfileModal
+        isDialogOpen={isFolderModalOpen}
+        setDialogOpen={setIsFolderModalOpen}
+      />
+    </>
   );
 };
 

@@ -178,7 +178,7 @@ export default function Bookmarks({ user, folderId }: Props) {
           );
 
           // Call saveLinks API to save it to new folder with fresh OG data
-          const res = await fetch("/api/saveLinks", {
+          const response = await fetch("/api/saveLinks", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -188,14 +188,15 @@ export default function Bookmarks({ user, folderId }: Props) {
             }),
           });
 
-          if (!res.ok) {
+          if (!response.ok) {
             reject(new Error("Failed to move and save link"));
           }
 
           resolve();
         } else {
+          console.log(user.uid, folderId, linkId, newRequestUrl);
           // UPDATE link in the same folder with fresh OG data
-          const res = await fetch("/api/updateLink", {
+          const response = await fetch("/api/updateLink", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -206,7 +207,9 @@ export default function Bookmarks({ user, folderId }: Props) {
             }),
           });
 
-          if (!res.ok) {
+          console.log(response);
+
+          if (!response.ok) {
             reject(new Error("Failed to update link"));
           }
 
