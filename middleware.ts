@@ -16,7 +16,12 @@ export async function middleware(request: NextRequest) {
 
   // Session cookie and protected/auth paths
   const sessionCookie = request.cookies.get("session")?.value;
-  const authPaths = ["/login", "/register"];
+  const authPaths = [
+    "/login",
+    "/register",
+    "/reset-password",
+    "/change-password",
+  ];
   const { pathname } = url;
 
   // URL rewriting based on subdomain
