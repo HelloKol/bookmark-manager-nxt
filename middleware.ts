@@ -1,103 +1,87 @@
-// import { UserInfo } from "firebase-admin/auth";
-// import { NextResponse } from "next/server";
-// import type { NextRequest } from "next/server";
-
-// // In-memory cache for session verification
-// const sessionCache = new Map<string, { user: UserInfo; timestamp: number }>();
-
-// export async function middleware(request: NextRequest) {
-//   const sessionCookie = request.cookies.get("session")?.value;
-
-//   // Skip session verification for non-protected routes
-//   const protectedPaths = ["/dashboard"];
-//   const authPaths = ["/login", "/register"];
-//   const { pathname } = request.nextUrl;
-
-//   if (!protectedPaths.includes(pathname) && !authPaths.includes(pathname)) {
-//     return NextResponse.next();
-//   }
-
-//   // Check if session is cached
-//   if (sessionCookie && sessionCache.has(sessionCookie)) {
-//     const cachedSession = sessionCache.get(sessionCookie);
-//     if (cachedSession && Date.now() - cachedSession.timestamp < 60 * 1000) {
-//       // Use cached session data if it's less than 1 minute old
-//       const { user } = cachedSession;
-
-//       // Redirect logged-in users away from auth pages
-//       if (user && authPaths.includes(pathname)) {
-//         return NextResponse.redirect(new URL("/dashboard", request.url));
-//       }
-
-//       // Redirect logged-out users away from protected pages
-//       if (!user && protectedPaths.includes(pathname)) {
-//         return NextResponse.redirect(new URL("/login", request.url));
-//       }
-
-//       return NextResponse.next();
-//     }
-//   }
-
-//   // Verify session cookie by calling the API route
-//   if (sessionCookie) {
-//     const response = await fetch(
-//       `${request.nextUrl.origin}/api/verify-session`,
-//       {
-//         headers: {
-//           Cookie: `session=${sessionCookie}`,
-//         },
-//       }
-//     );
-
-//     if (response.ok) {
-//       const { user } = await response.json();
-
-//       // Cache the session verification result
-//       sessionCache.set(sessionCookie, { user, timestamp: Date.now() });
-
-//       // Redirect logged-in users away from auth pages
-//       if (user && authPaths.includes(pathname)) {
-//         return NextResponse.redirect(new URL("/dashboard", request.url));
-//       }
-
-//       // Redirect logged-out users away from protected pages
-//       if (!user && protectedPaths.includes(pathname)) {
-//         return NextResponse.redirect(new URL("/login", request.url));
-//       }
-//     }
-//   } else if (protectedPaths.includes(pathname)) {
-//     // Redirect logged-out users away from protected pages
-//     return NextResponse.redirect(new URL("/login", request.url));
-//   }
-
-//   return NextResponse.next();
-// }
-
 import { NextRequest, NextResponse } from "next/server";
+import { UserInfo } from "firebase-admin/auth";
 
-export function middleware(request: NextRequest) {
+// In-memory cache for session verification
+const sessionCache = new Map<
+  string,
+  { user: UserInfo | null; timestamp: number }
+>();
+
+export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
   const host = request.headers.get("host") || "";
   const subdomain = host.split(".")[0];
 
   console.log("Subdomain:", subdomain);
 
-  // If subdomain is 'app', rewrite to /app/**
+  // Session cookie and protected/auth paths
+  const sessionCookie = request.cookies.get("session")?.value;
+  const authPaths = ["/login", "/register"];
+  const { pathname } = url;
+
+  // URL rewriting based on subdomain
   if (subdomain === "app") {
-    if (url.pathname === "/") {
+    if (pathname === "/") {
       url.pathname = "/app";
-    } else if (!url.pathname.startsWith("/app")) {
-      url.pathname = `/app${url.pathname}`;
+    } else if (!pathname.startsWith("/app")) {
+      url.pathname = `/app${pathname}`;
     }
   } else {
-    // For marketing site, rewrite to /marketing/**
-    if (url.pathname === "/") {
+    if (pathname === "/") {
       url.pathname = "/marketing";
-    } else if (!url.pathname.startsWith("/marketing")) {
-      url.pathname = `/marketing${url.pathname}`;
+    } else if (!pathname.startsWith("/marketing")) {
+      url.pathname = `/marketing${pathname}`;
     }
   }
 
+  // Skip session verification for non-app subdomains
+  if (subdomain !== "app") {
+    return NextResponse.rewrite(url);
+  }
+
+  // Check if session is cached
+  let user: UserInfo | null = null;
+  if (sessionCookie && sessionCache.has(sessionCookie)) {
+    const cachedSession = sessionCache.get(sessionCookie);
+    if (cachedSession && Date.now() - cachedSession.timestamp < 60 * 1000) {
+      user = cachedSession.user;
+    }
+  }
+
+  // If session is not cached, verify it via the API
+  if (!user && sessionCookie) {
+    const response = await fetch(
+      `${request.nextUrl.origin}/api/verify-session`,
+      {
+        headers: {
+          Cookie: `session=${sessionCookie}`,
+        },
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      user = data.user;
+
+      // Cache the session verification result
+      sessionCache.set(sessionCookie, { user, timestamp: Date.now() });
+    }
+  }
+
+  // Redirect logic for authenticated users
+  if (user) {
+    // If user is logged in and tries to access auth pages, redirect to home
+    if (authPaths.includes(pathname)) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  } else {
+    // If user is not logged in and tries to access protected pages, redirect to login
+    if (!authPaths.includes(pathname)) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+  }
+
+  // Rewrite the URL for non-protected routes or after authentication checks
   return NextResponse.rewrite(url);
 }
 
