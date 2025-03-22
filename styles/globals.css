@@ -26,7 +26,12 @@
 
 .marketing {
   min-height: 100vh;
-  background: white;
+  background: var(--background);
+}
+
+.app {
+  --background: #171717;
+  --foreground: #ffffff;
 }
 
 .app {

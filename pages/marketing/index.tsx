@@ -45,7 +45,11 @@ export default function LandingPage() {
                   Log in
                 </Link>
               </Button>
-              <Button size="sm">Sign up free</Button>
+              <Button size="sm">
+                <Link href={`${process.env.NEXT_PUBLIC_SUB_DOMAIN}/register`}>
+                  Sign up free
+                </Link>
+              </Button>
             </nav>
           </div>
         </div>
@@ -78,7 +82,7 @@ export default function LandingPage() {
               <div className="flex items-center justify-center">
                 <div className="relative w-full max-w-[500px] aspect-video overflow-hidden rounded-xl border shadow-xl">
                   <Image
-                    src="/placeholder.svg?height=500&width=800"
+                    src="/static/hero.png"
                     width={800}
                     height={500}
                     alt="BookmarkPro dashboard preview"
@@ -216,7 +220,7 @@ export default function LandingPage() {
             <div className="mx-auto max-w-5xl">
               <div className="relative w-full overflow-hidden rounded-xl border shadow-xl">
                 <Image
-                  src="/placeholder.svg?height=600&width=1200"
+                  src="/static/demo.png"
                   width={1200}
                   height={600}
                   alt="BookmarkPro workflow demonstration"

@@ -120,9 +120,6 @@ export const logout = async () => {
     await fetch("/api/logout", {
       method: "POST",
     });
-
-    // Redirect to login
-    // router.push("/login");
   } catch (error) {
     console.error("Logout error:", error);
     alert("Logout failed. Please try again.");

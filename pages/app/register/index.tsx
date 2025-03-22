@@ -3,17 +3,24 @@ import { useRouter } from "next/router";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { signup } from "../../../lib/auth";
-
 import { Button } from "@/components/LoginForm/button";
-import { Checkbox } from "@/components/LoginForm/checkbox";
 import { Input } from "@/components/LoginForm/input";
 import { Label } from "@/components/LoginForm/label";
+import Link from "next/link";
+import { auth, db } from "../../../lib/firebase";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  UserCredential,
+} from "firebase/auth";
+import { ref, set } from "firebase/database";
+import { toast } from "react-toastify";
+import { FirebaseError } from "firebase/app";
 
 // Define Yup validation schema
 const schema = yup.object().shape({
   firstName: yup.string().required("First Name is required"),
-  lastName: yup.string().required("Last Name is required"),
+  lastName: yup.string(),
   email: yup.string().email("Invalid email").required("Email is required"),
   password: yup
     .string()
@@ -35,64 +42,85 @@ export default function Signup() {
     resolver: yupResolver(schema),
   });
 
-  const onSubmit: SubmitHandler<FormData> = async (data) => {
-    try {
-      await signup(data.email, data.password, data.firstName, data.lastName);
-      router.push("/dashboard"); // Redirect after signup
-    } catch (err: unknown) {
-      if (err instanceof Error) alert(err.message);
+  const getFirebaseAuthErrorMessage = (errorCode: string) => {
+    switch (errorCode) {
+      case "auth/email-already-in-use":
+        return "Email already in use.";
+      case "auth/invalid-email":
+        return "Invalid email address.";
+      case "auth/weak-password":
+        return "Password is too weak.";
+      default:
+        return "Signup failed. Please try again.";
     }
+  };
+
+  const onSubmit: SubmitHandler<FormData> = async (data) => {
+    const { email, password, firstName, lastName } = data;
+
+    const signupPromise = new Promise<UserCredential>(
+      async (resolve, reject) => {
+        try {
+          const userCredential = await createUserWithEmailAndPassword(
+            auth,
+            email,
+            password
+          );
+          const user = userCredential.user;
+
+          // Store additional user details in Realtime Database
+          await set(ref(db, `users/${user.uid}`), {
+            firstName,
+            lastName,
+            email,
+          });
+
+          // Set session cookie (optional, for server-side authentication)
+          const idToken = await user.getIdToken();
+          const response = await fetch("/api/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ idToken }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to create session cookie");
+          }
+
+          resolve(userCredential);
+        } catch (error) {
+          reject(error);
+        }
+      }
+    );
+
+    toast.promise(signupPromise, {
+      pending: "Creating account...",
+      success: {
+        render() {
+          router.push("/");
+          return "Signup successful! Logging you in...";
+        },
+      },
+      // Check if the error is a FirebaseError and show friendly messages
+      error: {
+        render({ data }) {
+          if (data instanceof FirebaseError) {
+            return getFirebaseAuthErrorMessage(data.code);
+          } else if (data instanceof Error) {
+            return data.message;
+          } else {
+            return "An unexpected error occurred.";
+          }
+        },
+      },
+    });
   };
 
   return (
     <>
-      {/* <form onSubmit={handleSubmit(onSubmit)}>
-        <div>
-          <label>First Name</label>
-          <input
-            className="bg-zinc-800 p-4 w-84 mb-4 block"
-            placeholder="Enter text"
-            {...register("firstName")}
-          />
-          {errors.firstName && <p>{errors.firstName.message}</p>}
-        </div>
-
-        <div>
-          <label>Last Name</label>
-          <input
-            className="bg-zinc-800 p-4 w-84 mb-4 block"
-            placeholder="Enter text"
-            {...register("lastName")}
-          />
-          {errors.lastName && <p>{errors.lastName.message}</p>}
-        </div>
-
-        <div>
-          <label>Email</label>
-          <input
-            className="bg-zinc-800 p-4 w-84 mb-4 block"
-            placeholder="Enter text"
-            {...register("email")}
-          />
-          {errors.email && <p>{errors.email.message}</p>}
-        </div>
-
-        <div>
-          <label>Password</label>
-          <input
-            className="bg-zinc-800 p-4 w-84 mb-4 block"
-            placeholder="Enter text"
-            type="password"
-            {...register("password")}
-          />
-          {errors.password && <p>{errors.password.message}</p>}
-        </div>
-
-        <button className="p-4 bg-amber-800" type="submit">
-          Sign Up
-        </button>
-      </form> */}
-
       <div className="container mx-auto p-4 flex justify-center items-center h-screen">
         <div className="grid max-h-[calc(100%-4rem)] w-full gap-4 overflow-y-auto border bg-white p-6 shadow-lg shadow-black/5 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:max-w-[400px] sm:rounded-xl">
           <div className="flex flex-col items-center gap-2">
@@ -130,8 +158,13 @@ export default function Signup() {
                   id={`${id}-firstname`}
                   placeholder="Matt"
                   type="text"
-                  required
+                  {...register("firstName")}
                 />
+                {errors.firstName && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.firstName.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor={`${id}-name`}>Last name</Label>
@@ -139,8 +172,13 @@ export default function Signup() {
                   id={`${id}-lastname`}
                   placeholder="Welsh"
                   type="text"
-                  required
+                  {...register("lastName")}
                 />
+                {errors.lastName && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.lastName.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor={`${id}-email`}>Email</Label>
@@ -151,7 +189,11 @@ export default function Signup() {
                   required
                   {...register("email")}
                 />
-                {errors.email && <p>{errors.email.message}</p>}
+                {errors.email && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.email.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor={`${id}-password`}>Password</Label>
@@ -162,12 +204,16 @@ export default function Signup() {
                   required
                   {...register("password")}
                 />{" "}
-                {errors.password && <p>{errors.password.message}</p>}
+                {errors.password && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.password.message}
+                  </p>
+                )}
               </div>
             </div>
 
-            <Button type="submit" className="w-full">
-              Sign up
+            <Button type="submit" className="w-full cursor-pointer">
+              Create Account
             </Button>
           </form>
 
@@ -175,7 +221,11 @@ export default function Signup() {
             <span className="text-xs text-black">Or</span>
           </div>
 
-          <Button variant="outline">Continue with Google</Button>
+          <Button variant="outline">
+            <Link href={`${process.env.NEXT_PUBLIC_SUB_DOMAIN}/login`}>
+              Sign in
+            </Link>
+          </Button>
 
           <p className="text-center text-xs text-black/40">
             By signing up you agree to our{" "}
