@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { useAppContext } from "@/context/AppProvider";
-import { useFetchFolders } from "@/hooks/data/useFetchFolders";
+import { useFetchBookmarks } from "@/hooks/data/useFetchBookmarks";
 import ShareFolder from "./ShareFolder";
 import {
   DropdownMenuRoot,
@@ -12,28 +12,30 @@ import {
 import { Button } from "./ui/button";
 import { MoreHorizontal } from "lucide-react";
 
-export default function FolderList() {
+export default function BookmarkList() {
   const { user, searchTerm, userLoading } = useAppContext();
-  const state = useFetchFolders(user?.uid || null, userLoading);
+  const state = useFetchBookmarks(user?.uid || null, userLoading);
+
+  console.log(state, "state");
 
   // Filter links based on searchTerm
   const filteredFolders =
     state.status === "success"
       ? state.folders.filter((folder) => {
           const searchLower = searchTerm.toLowerCase();
-          return folder.name?.toLowerCase().includes(searchLower);
+          return folder.ogTitle?.toLowerCase().includes(searchLower);
         })
       : [];
 
   if (state.status === "loading" || userLoading === "loading")
-    return <p>Loading folders...</p>;
+    return <p>Loading bookmarks...</p>;
   if (state.status === "error") return <p>Error: {state.error}</p>;
 
   return (
     <div className="flex flex-col gap-4 mt-10">
-      {filteredFolders.length === 0 && <p>No folders found.</p>}
+      {filteredFolders.length === 0 && <p>No bookmarks found.</p>}
 
-      <h2 className="text-xl font-semibold">Folders</h2>
+      <h2 className="text-xl font-semibold">Bookmarks</h2>
       <div className="flex gap-4">
         {filteredFolders.map((folder) => (
           <div key={folder.id} className="">
@@ -58,16 +60,19 @@ export default function FolderList() {
             </DropdownMenuRoot>
 
             <Link
-              href={`/folder/${folder.slug}`}
+              href={folder.requestUrl}
+              target="_blank"
               className="block col-span-2 p-4 text-center cursor-pointer"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/static/macos-folder.png"
+                src={folder?.ogImage?.[0]?.url}
                 alt="Vercel Logo"
                 className="block w-32 cursor-pointer"
               />
-              {folder.name}
+              <span className="block w-32 overflow-hidden">
+                {folder.requestUrl}
+              </span>
             </Link>
           </div>
         ))}

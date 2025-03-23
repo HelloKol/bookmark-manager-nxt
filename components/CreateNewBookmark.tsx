@@ -4,7 +4,7 @@ import { auth } from "@/lib/firebase";
 import { toast } from "react-toastify";
 
 interface CreateNewBookmarkProps {
-  folderId: string;
+  folderId?: string; // Make folderId optional
 }
 
 const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({ folderId }) => {
@@ -40,7 +40,7 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({ folderId }) => {
               body: JSON.stringify({
                 url: cleanUrl,
                 userId: user.uid,
-                folderId,
+                folderId: folderId || null, // Pass null if folderId is not provided
               }),
             });
 

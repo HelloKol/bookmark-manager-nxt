@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import SearchbarHeader from "@/components/SearchbarHeader";
 import FolderList from "@/components/FolderList";
 import Tags from "@/components/app/Tags";
+import BookmarkList from "@/components/BookmarkList";
 
 export default function Home() {
   return (
@@ -13,6 +14,7 @@ export default function Home() {
       <Header />
       <Tags />
       <FolderList />
+      <BookmarkList />
     </div>
   );
 }

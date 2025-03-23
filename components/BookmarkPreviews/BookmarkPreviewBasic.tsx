@@ -92,8 +92,6 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
     setDialogOpen(false);
   };
 
-  console.log(preview);
-
   return (
     <div className="flex items-center justify-between space-x-4 p-2 border border-gray-600 rounded-md">
       <Link
