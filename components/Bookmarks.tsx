@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ref, onValue, remove } from "firebase/database";
+import { ref, onValue, remove, set, push } from "firebase/database";
 import BookmarkPreviewBasic from "@/components/BookmarkPreviews/BookmarkPreviewBasic";
 import BookmarkPreviewCompact from "@/components/BookmarkPreviews/BookmarkPreviewCompact";
 import BookmarkPreviewDetailed from "@/components/BookmarkPreviews/BookmarkPreviewDetailed";
@@ -36,6 +36,22 @@ interface Props {
   user: User | null;
   folderId: string;
 }
+
+const modernMacOSTagColors = [
+  "#FF665E", // Red
+  "#FFA000", // Orange
+  "#FFE000", // Yellow
+  "#00F449", // Green
+  "#00AFFF", // Blue
+  "#FF7FFF", // Purple
+  "#ACA8AC", // Gray
+];
+
+const getRandomModernMacOSTagColor = () => {
+  return modernMacOSTagColors[
+    Math.floor(Math.random() * modernMacOSTagColors.length)
+  ];
+};
 
 export default function Bookmarks({ user, folderId }: Props) {
   const { searchTerm } = useAppContext();
@@ -146,14 +162,14 @@ export default function Bookmarks({ user, folderId }: Props) {
   const handleEdit = async (
     oldLink: Preview,
     newRequestUrl: string,
-    newFolderId: string
+    newFolderId: string,
+    newTags: string[] // Array of tag names
   ) => {
     if (!user) {
-      toast.error("You must be logged in to delete a link");
+      toast.error("You must be logged in to edit a link");
       return;
     }
 
-    // Wrap the deletion logic in a promise
     const updateBookmark = new Promise<void>(async (resolve, reject) => {
       try {
         const folderRef = ref(
@@ -164,20 +180,19 @@ export default function Bookmarks({ user, folderId }: Props) {
         if (!snapshot.exists()) return;
 
         const linksObj = snapshot.val();
-
         const linkId = Object.keys(linksObj).find(
           (key) => linksObj[key].requestUrl === oldLink.requestUrl
         );
 
         if (!linkId) return;
 
+        // Step 1: Update the link's URL and folder
         if (folderId !== newFolderId) {
-          // MOVE link to a different folder
+          // Move link to a different folder
           await remove(
             ref(db, `users/${user.uid}/folders/${folderId}/links/${linkId}`)
           );
 
-          // Call saveLinks API to save it to new folder with fresh OG data
           const response = await fetch("/api/saveLinks", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -191,11 +206,8 @@ export default function Bookmarks({ user, folderId }: Props) {
           if (!response.ok) {
             reject(new Error("Failed to move and save link"));
           }
-
-          resolve();
         } else {
-          console.log(user.uid, folderId, linkId, newRequestUrl);
-          // UPDATE link in the same folder with fresh OG data
+          // Update link in the same folder
           const response = await fetch("/api/updateLink", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -207,29 +219,65 @@ export default function Bookmarks({ user, folderId }: Props) {
             }),
           });
 
-          console.log(response);
-
           if (!response.ok) {
             reject(new Error("Failed to update link"));
           }
-
-          resolve();
         }
+
+        // Step 2: Update tags
+        const tagsRef = ref(db, `tags`);
+        const tagsSnapshot = await onValueOnce(tagsRef);
+        const existingTags = tagsSnapshot.exists() ? tagsSnapshot.val() : {};
+
+        const updatedTags: Record<string, boolean> = {};
+
+        for (const tagName of newTags) {
+          const tagId = Object.keys(existingTags).find(
+            (key) => existingTags[key].name === tagName
+          );
+
+          if (tagId) {
+            // Tag already exists, reuse it
+            updatedTags[tagId] = true;
+          } else {
+            const tagColor = getRandomModernMacOSTagColor();
+
+            // Create a new tag
+            const newTagId = push(ref(db, "tags")).key;
+            await set(ref(db, `tags/${newTagId}`), {
+              name: tagName,
+              links: { [linkId]: true },
+              folders: { [newFolderId]: true },
+              tagColor: tagColor,
+            });
+            updatedTags[newTagId] = true;
+          }
+        }
+
+        // Update the link's tags
+        await set(
+          ref(
+            db,
+            `users/${user.uid}/folders/${newFolderId}/links/${linkId}/tags`
+          ),
+          updatedTags
+        );
+
+        resolve();
       } catch (error) {
         reject(error);
       }
     });
 
-    // Use toast.promise to handle loading, success, and error states
     toast.promise(updateBookmark, {
       pending: "Updating link...",
-      success: "Link udpdated successfully!",
+      success: "Link updated successfully!",
       error: {
         render: ({ data }) => {
           if (data instanceof Error) {
-            return data.message || "Error Updating link";
+            return data.message || "Error updating link";
           }
-          return "Error Updating link";
+          return "Error updating link";
         },
       },
     });

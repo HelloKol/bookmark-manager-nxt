@@ -60,6 +60,7 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
   onEdit,
 }) => {
   const [isDialogOpen, setDialogOpen] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
 
   const {
     register,
@@ -87,9 +88,11 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
   };
 
   const onSubmit = (data: { url: string; folderId: string }) => {
-    onEdit(preview, data.url, data.folderId);
+    onEdit(preview, data.url, data.folderId, tags);
     setDialogOpen(false);
   };
+
+  console.log(preview);
 
   return (
     <div className="flex items-center justify-between space-x-4 p-2 border border-gray-600 rounded-md">
@@ -151,6 +154,32 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
               {errors.url && (
                 <p className="text-sm text-red-500">{errors.url.message}</p>
               )}
+            </div>
+
+            <div className="flex flex-col space-y-1">
+              <label htmlFor="tags" className="text-sm">
+                Tags (comma-separated)
+              </label>
+              <Input
+                id="tags"
+                type="text"
+                placeholder="e.g., webdev, tutorial"
+                onChange={(e) =>
+                  setTags(e.target.value.split(",").map((tag) => tag.trim()))
+                }
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {preview.tags &&
+                Object.keys(preview.tags).map((tagId) => (
+                  <span
+                    key={tagId}
+                    className="bg-gray-200 px-2 py-1 rounded-md text-sm"
+                  >
+                    {tagId}
+                  </span>
+                ))}
             </div>
 
             {/* Folder Select */}
