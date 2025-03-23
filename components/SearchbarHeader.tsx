@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import SearchInput from "@/components/SearchInput";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import { useHotkeys } from "react-hotkeys-hook";
-import Dialog from "@/components/RadixUI/Dialog";
 import { useAppContext } from "@/context/AppProvider";
 import Link from "next/link";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 const SearchbarHeader: React.FC = () => {
   const { user } = useAppContext();
@@ -40,11 +40,10 @@ const SearchbarHeader: React.FC = () => {
       </div>
 
       {/* Search Modal */}
-      <Dialog
-        isDialogOpen={isSearchModalOpen}
-        setDialogOpen={setIsSearchModalOpen}
-      >
-        <SearchInput placeholder="Search bookmarks" type="search" autoFocus />
+      <Dialog open={isSearchModalOpen} onOpenChange={setIsSearchModalOpen}>
+        <DialogContent className="sm:max-w-[525px] p-0" hideCloseButton={true}>
+          <SearchInput placeholder="Search bookmarks" type="search" autoFocus />
+        </DialogContent>
       </Dialog>
     </>
   );

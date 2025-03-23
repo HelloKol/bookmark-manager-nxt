@@ -3,7 +3,17 @@ import { ref, push, set } from "firebase/database";
 import { auth, db } from "@/lib/firebase";
 import { generateSlug } from "@/lib/utils";
 import { toast } from "react-toastify";
-import Dialog from "@/components/RadixUI/Dialog";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "./ui/input";
 
 const CreateNewFolder: React.FC = () => {
   const [folderName, setFolderName] = useState("");
@@ -57,46 +67,36 @@ const CreateNewFolder: React.FC = () => {
   };
 
   return (
-    <>
-      <button
-        className="rounded-md cursor-pointer bg-indigo-500 py-2 px-4 border border-transparent text-center text-sm text-white transition-all shadow-md hover:shadow-lg focus:bg-slate-700 focus:shadow-none active:bg-slate-700 hover:bg-slate-700 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none ml-2"
-        type="button"
-        onClick={() => setIsFolderModalOpen(true)}
-      >
-        Create New Folder
-      </button>
+    <Dialog open={isFolderModalOpen} onOpenChange={setIsFolderModalOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" onClick={() => setIsFolderModalOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Bookmark
+        </Button>
+      </DialogTrigger>
 
-      {/* Folder Modal */}
-      <Dialog
-        isDialogOpen={isFolderModalOpen}
-        setDialogOpen={setIsFolderModalOpen}
-      >
-        <h2 className="text-lg font-semibold mb-4">Create New Folder</h2>
+      <DialogContent className="sm:max-w-[525px]">
+        <DialogHeader>
+          <DialogTitle>Create New Folder</DialogTitle>
+        </DialogHeader>
 
-        <input
+        <Input
           type="text"
           placeholder="Folder name"
           value={folderName}
           onChange={(e) => setFolderName(e.target.value)}
-          className="w-full p-3 rounded mb-4 bg-[#353536] hover:bg-[#2e2e2e] outline-none"
         />
 
-        <div className="flex justify-end">
-          <button
-            className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded mr-2"
-            onClick={() => setIsFolderModalOpen(false)}
-          >
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsFolderModalOpen(false)}>
             Cancel
-          </button>
-          <button
-            className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded"
-            onClick={handleCreateFolder}
-          >
+          </Button>
+          <Button type="submit" onClick={handleCreateFolder}>
             Save
-          </button>
-        </div>
-      </Dialog>
-    </>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

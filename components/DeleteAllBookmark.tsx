@@ -3,7 +3,16 @@ import { ref, remove } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { toast } from "react-toastify";
 import { useAppContext } from "@/context/AppProvider";
-import Dialog from "@/components/RadixUI/Dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface DeleteAllBookmarkProps {
   folderId: string;
@@ -44,41 +53,30 @@ const DeleteAllBookmark: React.FC<DeleteAllBookmarkProps> = ({
   };
 
   return (
-    <>
-      <button
-        className="rounded-md cursor-pointer bg-red-500 py-2 px-4 border border-transparent text-center text-sm text-white transition-all shadow-md hover:shadow-lg focus:bg-red-700 focus:shadow-none active:bg-red-700 hover:bg-red-700 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
-        onClick={() => setIsFolderModalOpen(true)}
-      >
-        Remove All Bookmarks
-      </button>
+    <Dialog open={isFolderModalOpen} onOpenChange={setIsFolderModalOpen}>
+      <DialogTrigger asChild>
+        <Button>Remove All Bookmarks</Button>
+      </DialogTrigger>
 
-      {/* Folder Modal */}
-      <Dialog
-        isDialogOpen={isFolderModalOpen}
-        setDialogOpen={setIsFolderModalOpen}
-      >
-        <h2 className="text-lg font-semibold mb-4">Remove all bookmarks</h2>
-        <p>
-          Are you sure you want to remove all bookmarks? All of your data will
-          be permanently removed. This action cannot be undone.
-        </p>
+      <DialogContent className="sm:max-w-[525px]">
+        <DialogHeader>
+          <DialogTitle>Remove all bookmarks</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to remove all bookmarks? All of your data will
+            be permanently removed. This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="flex justify-end">
-          <button
-            className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded mr-2"
-            onClick={() => setIsFolderModalOpen(false)}
-          >
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsFolderModalOpen(false)}>
             Cancel
-          </button>
-          <button
-            className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded"
-            onClick={handleRemoveAllBookmarks}
-          >
+          </Button>
+          <Button type="submit" onClick={handleRemoveAllBookmarks}>
             Save
-          </button>
-        </div>
-      </Dialog>
-    </>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

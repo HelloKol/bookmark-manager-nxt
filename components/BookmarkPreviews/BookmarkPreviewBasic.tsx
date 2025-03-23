@@ -47,7 +47,6 @@ interface LinkPreviewBasicProps {
   ) => void;
 }
 
-// ✅ Yup validation schema
 const schema = yup.object().shape({
   url: yup.string().url("Must be a valid URL").required("URL is required"),
   folderId: yup.string().required(),
@@ -62,7 +61,6 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
 }) => {
   const [isDialogOpen, setDialogOpen] = useState(false);
 
-  // ✅ React Hook Form with Yup resolver
   const {
     register,
     handleSubmit,
@@ -76,7 +74,6 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
     },
   });
 
-  // ✅ Open dialog and reset form values
   const handleOpenDialog = () => {
     reset({
       url: preview.requestUrl,
@@ -85,12 +82,10 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
     setDialogOpen(true);
   };
 
-  // ✅ Handle delete click
   const handleDeleteClick = () => {
     onDelete(preview.requestUrl);
   };
 
-  // ✅ Form submit handler
   const onSubmit = (data: { url: string; folderId: string }) => {
     onEdit(preview, data.url, data.folderId);
     setDialogOpen(false);
@@ -132,7 +127,7 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
         </DropdownMenuContent>
       </DropdownMenuRoot>
 
-      {/* Edit Dialog with React Hook Form */}
+      {/* Edit Bookmark */}
       <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
