@@ -8,6 +8,8 @@ import {
   SidebarRail,
 } from "@/components/app/Sidebar/sidebar";
 import FileTree from "@/components/app/FileTree/FileTree";
+import { useAppContext } from "@/context/AppProvider";
+import { useFetchFolders } from "@/hooks/data/useFetchFolders";
 
 const fileTreeData = [
   {
@@ -42,13 +44,24 @@ const fileTreeData = [
 ];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user, userLoading } = useAppContext();
+  const state = useFetchFolders(user?.uid || null, userLoading);
+
+  const renderFileTree = () => {
+    if (state.status === "loading" || userLoading === "loading")
+      return <p>Loading folders...</p>;
+    if (state.status === "error") return <p>Error: {state.error}</p>;
+
+    return <FileTree items={state.folders} />;
+  };
+
   return (
     <Sidebar {...props}>
       <SidebarHeader>LOGO</SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Folders</SidebarGroupLabel>
-          <FileTree items={fileTreeData} />
+          {renderFileTree()}
         </SidebarGroup>
       </SidebarContent>
       <SidebarRail />

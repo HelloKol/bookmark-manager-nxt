@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { File, Folder, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
 type FileItem = {
   name: string;
@@ -47,37 +48,74 @@ function FileTreeNode({ item }: FileTreeNodeProps) {
     }
   }, [isOpen]);
 
-  if (item.type === "file") {
+  if (item.type === "bookmark") {
+    console.log("BOOK MARK");
     return (
-      <li className="flex items-center gap-2 rounded-md px-3 py-2 hover:bg-muted/50">
-        <File className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm">{item.name}</span>
-      </li>
+      <Link
+        href={item.requestUrl}
+        target="_blank"
+        className="flex items-center gap-2 rounded-md px-3 py-2 hover:bg-muted/50"
+      >
+        <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis">
+          {item.ogTitle || item.requestUrl}
+        </span>
+      </Link>
     );
   }
 
   return (
     <li>
-      <div
+      <Link
+        href={`/folder/${item.slug}`}
         className="flex w-full items-center gap-2 rounded-md px-3 py-2 hover:bg-muted/50 cursor-pointer"
-        onClick={() => setIsOpen(!isOpen)}
       >
-        <ChevronRight
-          className="h-4 w-4 text-muted-foreground transition-transform duration-200"
-          style={{ transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsOpen(!isOpen);
+          }}
+          className="relative z-10"
+        >
+          <ChevronRight
+            className="h-4 w-4 text-muted-foreground transition-transform duration-200"
+            style={{ transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}
+          />
+        </button>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/static/macos-folder.png"
+          alt="Vercel Logo"
+          className="block w-5 cursor-pointer"
         />
-        <Folder className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm">{item.name}</span>
-      </div>
+        <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis">
+          {item.name}
+        </span>
+      </Link>
+
       <div
         ref={contentRef}
         className="overflow-hidden transition-all duration-200"
         style={{ height: height !== undefined ? `${height}px` : undefined }}
       >
         <ul className="border-l border-muted pl-4 ml-4 mt-1 space-y-1 py-1">
-          {(item as FolderItem).children.map((child, index) => (
-            <FileTreeNode key={index} item={child} />
-          ))}
+          {item?.links &&
+            Object.keys(item.links as FolderItem).map((key, index) => {
+              console.log({
+                ...item.links[key],
+                type: "bookmark",
+              });
+
+              return (
+                <FileTreeNode
+                  key={index}
+                  item={{
+                    ...item.links[key],
+                    type: "bookmark",
+                  }}
+                />
+              );
+            })}
         </ul>
       </div>
     </li>

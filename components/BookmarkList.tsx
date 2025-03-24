@@ -16,8 +16,6 @@ export default function BookmarkList() {
   const { user, searchTerm, userLoading } = useAppContext();
   const state = useFetchBookmarks(user?.uid || null, userLoading);
 
-  console.log(state, "state");
-
   // Filter links based on searchTerm
   const filteredFolders =
     state.status === "success"

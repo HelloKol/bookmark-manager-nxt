@@ -9,7 +9,6 @@ export default function Home() {
     <div className="container mx-auto p-4">
       <Header />
       <Tags />
-      <FolderList />
       <BookmarkList />
     </div>
   );
