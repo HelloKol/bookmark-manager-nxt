@@ -12,7 +12,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
         className={cn(
-          "flex h-9 w-full rounded-lg border border-input px-5 py-7 text-md text-foreground placeholder:text-muted-foreground/70 outline-none disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-9 w-full rounded-md border border-input px-5 py-5 text-md text-foreground placeholder:text-muted-foreground/70 outline-none disabled:cursor-not-allowed disabled:opacity-50",
           type === "search" &&
             "[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none [&::-webkit-search-results-button]:appearance-none [&::-webkit-search-results-decoration]:appearance-none",
           type === "file" &&

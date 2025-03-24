@@ -9,7 +9,7 @@ import BookmarkList from "@/components/BookmarkList";
 export default function Home() {
   return (
     <div className="container mx-auto p-4">
-      <SearchbarHeader />
+      {/* <SearchbarHeader /> */}
       {/* <Greeting name={`${user?.firstName ?? ""} ${user?.lastName ?? ""}`} /> */}
       <Header />
       <Tags />

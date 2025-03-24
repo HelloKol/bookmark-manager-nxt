@@ -1,13 +1,30 @@
 import React, { useState } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
 import { auth } from "@/lib/firebase";
 import { toast } from "react-toastify";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "./ui/button";
+import { Textarea } from "./ui/textarea";
+import { Plus } from "lucide-react";
+import { Input } from "./ui/input";
+// import TagSelectorDefault from "./app/TagSelector";
 
 interface CreateNewBookmarkProps {
   folderId?: string; // Make folderId optional
+  folders: any;
 }
 
-const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({ folderId }) => {
+const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
+  folderId,
+  folders,
+}) => {
   const [urls, setUrls] = useState<string[]>([]);
   const [textAreaValue, setTextAreaValue] = useState<string>("");
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -96,36 +113,79 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({ folderId }) => {
 
   return (
     <>
-      <button
-        className="rounded-md cursor-pointer bg-orange-500 py-2 px-4 border border-transparent text-center text-sm text-white transition-all shadow-md hover:shadow-lg focus:bg-slate-700 focus:shadow-none active:bg-slate-700 hover:bg-slate-700 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none ml-2"
-        type="button"
-        onClick={() => setIsSearchModalOpen(true)}
-      >
-        Create new bookmark
-      </button>
+      <Button type="button" onClick={() => setIsSearchModalOpen(true)}>
+        <Plus className="mr-2 h-4 w-4" />
+        Add Bookmark
+      </Button>
 
       {/* Create Modal */}
-      <Dialog.Root open={isSearchModalOpen} onOpenChange={handleCloseModal}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0" />
-          <Dialog.Content className="fixed inset-0 w-screen h-screen">
-            <textarea
-              value={textAreaValue} // Use the local state for textarea value
-              onChange={handleUrlsChange}
-              onKeyDown={handleKeyDown} // Add keydown event handler
-              placeholder="Paste URLs here, one per line"
-              className="w-full h-full p-5 bg-[#242424] focus:outline-none"
-            />
+      <Dialog open={isSearchModalOpen} onOpenChange={handleCloseModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add new bookmarks</DialogTitle>
+          </DialogHeader>
 
-            <button
-              className="fixed top-5 right-5 z-1 bg-amber-600 p-4 cursor-pointer"
-              onClick={handleCloseModal}
+          <Textarea
+            value={textAreaValue}
+            onChange={handleUrlsChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Paste URLs here, one per line"
+            rows={7}
+          />
+
+          {/* <TagSelectorDefault /> */}
+
+          <div className="flex flex-col space-y-1">
+            <label htmlFor="tags" className="text-sm">
+              Tags (comma-separated)
+            </label>
+            <Input
+              id="tags"
+              type="text"
+              placeholder="e.g., work, entertainment"
+              // onChange={(e) =>
+              //   setTags(e.target.value.split(",").map((tag) => tag.trim()))
+              // }
+            />
+          </div>
+
+          {/* Folder Select */}
+          <div className="flex flex-col space-y-1">
+            <label htmlFor="folderId" className="text-sm">
+              Folder
+            </label>
+            {folders && (
+              <select
+                id="folderId"
+                // {...register("folderId")}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">Select a folder (optional)</option>
+                {folders.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={handleCloseModal}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                handleCreateBookmark();
+                handleCloseModal();
+              }}
             >
-              Close
-            </button>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

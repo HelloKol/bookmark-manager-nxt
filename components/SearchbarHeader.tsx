@@ -17,8 +17,8 @@ const SearchbarHeader: React.FC = () => {
   });
 
   return (
-    <>
-      <div className="flex items-center justify-between mb-4 gap-10">
+    <div className="w-full">
+      <div className="flex items-center justify-between gap-10">
         <div className="relative w-full">
           <SearchInput placeholder="Search bookmarks" type="search" />
           <div className="pointer-events-none absolute inset-y-0 end-0 flex items-center justify-center pe-4 text-muted-foreground">
@@ -45,7 +45,7 @@ const SearchbarHeader: React.FC = () => {
           <SearchInput placeholder="Search bookmarks" type="search" autoFocus />
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 };
 

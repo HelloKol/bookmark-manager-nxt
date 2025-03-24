@@ -161,7 +161,7 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
               <Input
                 id="tags"
                 type="text"
-                placeholder="e.g., webdev, tutorial"
+                placeholder="e.g., work, entertainment"
                 onChange={(e) =>
                   setTags(e.target.value.split(",").map((tag) => tag.trim()))
                 }
