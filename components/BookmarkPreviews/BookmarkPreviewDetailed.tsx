@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 
@@ -10,11 +11,11 @@ interface Preview {
   ogUrl: string;
 }
 
-interface LinkPreviewDetailedProps {
+interface BookmarkPreviewDetailedProps {
   preview: Preview;
 }
 
-const LinkPreviewDetailed: React.FC<LinkPreviewDetailedProps> = ({
+const BookmarkPreviewDetailed: React.FC<BookmarkPreviewDetailedProps> = ({
   preview,
 }) => {
   // Extract the domain from the ogUrl
@@ -23,38 +24,44 @@ const LinkPreviewDetailed: React.FC<LinkPreviewDetailedProps> = ({
 
   // Handle favicon URL construction
   const faviconUrl = preview.favicon
-    ? preview.favicon?.startsWith("https://")
+    ? preview.favicon?.startsWith("https://") ||
+      preview.favicon?.startsWith("//www.") ||
+      preview.favicon?.startsWith("www.")
       ? preview.favicon
       : `${domain}${preview.favicon?.startsWith("/") ? "" : "/"}${
           preview.favicon || ""
         }`
-    : "/placeholder-600x400.png";
+    : "/static/placeholder-600x400.png";
 
   return (
     <Link
       href={preview.requestUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="col-span-4 bg-[#242424] p-5 rounded-lg mb-5"
+      className="rounded-lg"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        className="mb-5"
-        src={faviconUrl}
-        alt="Preview Image"
-        style={{ width: "50px" }}
-      />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={preview?.ogImage?.[0]?.url || "/placeholder-600x400.png"}
-        alt="Preview Image"
-        style={{ width: "100%", borderRadius: "8px" }}
-      />
-      <h2>{preview.ogTitle}</h2>
-      <p className="line-clamp-1 mb-2">{preview.ogDescription}</p>
-      <p>{preview.requestUrl}</p>
+      <div className="h-[300px] relative overflow-hidden mb-5">
+        <Image
+          src={preview?.ogImage?.[0]?.url || "/static/placeholder-600x400.png"}
+          alt="Preview Image"
+          layout="fill"
+          objectFit="cover"
+        />
+      </div>
+      <div className="flex gap-4 items-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="h-6 w-6" src={faviconUrl} alt="Preview Image" />
+        <div className="w-full overflow-hidden">
+          <h2 className="whitespace-nowrap overflow-hidden text-ellipsis text-lg">
+            {preview.ogTitle}
+          </h2>
+          <p className="whitespace-nowrap overflow-hidden text-ellipsis">
+            {preview.requestUrl}
+          </p>
+        </div>
+      </div>
     </Link>
   );
 };
 
-export default LinkPreviewDetailed;
+export default BookmarkPreviewDetailed;

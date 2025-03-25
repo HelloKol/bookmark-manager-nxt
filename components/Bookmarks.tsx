@@ -299,7 +299,7 @@ export default function Bookmarks({ user, folderId }: Props) {
     {
       value: "tab1",
       label: "Basic",
-      icon: <ViewBasic className="w-10 h-10" />,
+      icon: <ViewBasic className="w-10 h-10 fill-black" />,
       content: (
         <>
           {filteredLinks.length > 0 ? (
@@ -324,7 +324,7 @@ export default function Bookmarks({ user, folderId }: Props) {
     {
       value: "tab2",
       label: "Compact",
-      icon: <ViewCompact className="w-10 h-10" />,
+      icon: <ViewCompact className="w-6 h-6 fill-black" />,
       content: (
         <>
           {filteredLinks.length > 0 ? (
@@ -342,13 +342,18 @@ export default function Bookmarks({ user, folderId }: Props) {
     {
       value: "tab3",
       label: "Detailed",
-      icon: <ViewDetailed className="w-10 h-10" />,
+      icon: <ViewDetailed className="w-6 h-6 fill-black" />,
       content: (
         <>
           {filteredLinks.length > 0 ? (
             <div className="saved-links grid grid-cols-12 gap-4">
               {filteredLinks.map((link, index) => (
-                <BookmarkPreviewDetailed key={index} preview={link} />
+                <div
+                  key={link.id}
+                  className="col-span-13 lg:col-span-6 xl:col-span-4 mb-5 lg:mb-8"
+                >
+                  <BookmarkPreviewDetailed key={index} preview={link} />
+                </div>
               ))}
             </div>
           ) : (

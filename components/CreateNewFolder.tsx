@@ -3,7 +3,6 @@ import { ref, push, set } from "firebase/database";
 import { auth, db } from "@/lib/firebase";
 import { generateSlug } from "@/lib/utils";
 import { toast } from "react-toastify";
-import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,13 +10,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "./ui/input";
 
-const CreateNewFolder: React.FC = () => {
+interface Props {
+  isFolderModalOpen: boolean;
+  setIsFolderModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const CreateNewFolder: React.FC<Props> = ({
+  isFolderModalOpen,
+  setIsFolderModalOpen,
+}) => {
   const [folderName, setFolderName] = useState("");
-  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  // const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
 
   const handleCreateFolder = async () => {
     if (!folderName.trim()) {
@@ -68,12 +74,12 @@ const CreateNewFolder: React.FC = () => {
 
   return (
     <Dialog open={isFolderModalOpen} onOpenChange={setIsFolderModalOpen}>
-      <DialogTrigger asChild>
+      {/* <DialogTrigger asChild>
         <Button type="button" onClick={() => setIsFolderModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Add Bookmark
         </Button>
-      </DialogTrigger>
+      </DialogTrigger> */}
 
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>

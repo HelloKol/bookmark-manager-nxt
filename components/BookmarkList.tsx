@@ -1,7 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useAppContext } from "@/context/AppProvider";
-import { useFetchBookmarks } from "@/hooks/data/useFetchBookmarks";
 import ShareFolder from "./ShareFolder";
 import {
   DropdownMenuRoot,
@@ -11,69 +10,112 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "./ui/button";
 import { MoreHorizontal } from "lucide-react";
+import { Textarea } from "./ui/textarea";
+import { Separator } from "./app/Sidebar/separator";
+import BookmarkPreviewDetailed from "./BookmarkPreviews/BookmarkPreviewDetailed";
+import { Bookmark } from "@/types";
 
-export default function BookmarkList() {
-  const { user, searchTerm, userLoading } = useAppContext();
-  const state = useFetchBookmarks(user?.uid || null, userLoading);
+interface BookmarkListProps {
+  bookmarks: Bookmark[];
+  isLoading: boolean;
+  error: Error | null;
+}
+
+export default function BookmarkList({
+  bookmarks = [],
+  isLoading,
+  error,
+}: BookmarkListProps) {
+  const { searchTerm } = useAppContext();
+  const [urls, setUrls] = useState<string[]>([]);
+  const [textAreaValue, setTextAreaValue] = useState<string>("");
+
+  // Handle change in textarea (split URLs by newline)
+  const handleUrlsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setTextAreaValue(value);
+
+    const urlsArray = value
+      .split("\n") // Split by new lines
+      .map((url) => url.trim())
+      .filter((url) => url); // Filter out empty URLs
+    setUrls(urlsArray);
+  };
+
+  // Handle keydown event to detect Enter or Shift + Enter
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      // If Shift is not held, we prevent the default action to avoid new line and fetch metadata
+      e.preventDefault();
+      // handleCreateBookmark();
+    }
+  };
 
   // Filter links based on searchTerm
-  const filteredFolders =
-    state.status === "success"
-      ? state.folders.filter((folder) => {
-          const searchLower = searchTerm.toLowerCase();
-          return folder.ogTitle?.toLowerCase().includes(searchLower);
-        })
-      : [];
+  const filteredBookmarks = bookmarks?.filter((bookmark) => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      bookmark.title?.toLowerCase().includes(searchLower) ||
+      bookmark.url?.toLowerCase().includes(searchLower)
+    );
+  });
 
-  if (state.status === "loading" || userLoading === "loading")
-    return <p>Loading bookmarks...</p>;
-  if (state.status === "error") return <p>Error: {state.error}</p>;
+  if (isLoading) return <p>Loading bookmarks...</p>;
+  if (error) return <p>Error: {error.message}</p>;
 
   return (
     <div className="flex flex-col gap-4 mt-10">
-      {filteredFolders.length === 0 && <p>No bookmarks found.</p>}
+      <div className="grid grid-cols-12 gap-4">
+        <div className="col-span-13 lg:col-span-6 xl:col-span-4 p-3 bg-sidebar rounded-md flex flex-col">
+          <p>New Bookmark</p>
+          <Separator orientation="horizontal" className="mr-2 h-4" />
+          <Textarea
+            value={textAreaValue}
+            onChange={handleUrlsChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Paste URLs here, one per line"
+            variant="large"
+          />
+          <Button
+            type="button"
+            className="w-full mt-2"
+            disabled={!textAreaValue}
+          >
+            Create
+          </Button>
+        </div>
 
-      <h2 className="text-xl font-semibold">Bookmarks</h2>
-      <div className="flex gap-4">
-        {filteredFolders.map((folder) => (
-          <div key={folder.id} className="">
-            {/* Dropdown Menu */}
-            <DropdownMenuRoot>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <ShareFolder
-                    userId={user?.uid || ""}
-                    folderId={folder.id}
-                    folderData={folder}
-                  />
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenuRoot>
-
-            <Link
-              href={folder.requestUrl}
-              target="_blank"
-              className="block col-span-2 p-4 text-center cursor-pointer"
+        {filteredBookmarks.map((bookmark) => {
+          return (
+            <div
+              key={bookmark.id}
+              className="col-span-13 lg:col-span-6 xl:col-span-4 mb-5 lg:mb-8"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={folder?.ogImage?.[0]?.url}
-                alt="Vercel Logo"
-                className="block w-32 cursor-pointer"
-              />
-              <span className="block w-32 overflow-hidden">
-                {folder.requestUrl}
-              </span>
-            </Link>
-          </div>
-        ))}
+              {/* Dropdown Menu */}
+              {/* <DropdownMenuRoot>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Open menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem>
+                    <ShareFolder
+                      userId={user?.uid || ""}
+                      folderId={folder.id}
+                      folderData={folder}
+                    />
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenuRoot> */}
+
+              <BookmarkPreviewDetailed preview={bookmark} />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

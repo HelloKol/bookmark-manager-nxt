@@ -130,7 +130,6 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
             onChange={handleUrlsChange}
             onKeyDown={handleKeyDown}
             placeholder="Paste URLs here, one per line"
-            rows={7}
           />
 
           {/* <TagSelectorDefault /> */}

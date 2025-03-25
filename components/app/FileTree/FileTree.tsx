@@ -49,7 +49,6 @@ function FileTreeNode({ item }: FileTreeNodeProps) {
   }, [isOpen]);
 
   if (item.type === "bookmark") {
-    console.log("BOOK MARK");
     return (
       <Link
         href={item.requestUrl}
@@ -91,6 +90,10 @@ function FileTreeNode({ item }: FileTreeNodeProps) {
         <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis">
           {item.name}
         </span>
+
+        <p className="ml-auto text-sm text-muted-foreground">
+          {item?.links && Object.keys(item?.links).length}
+        </p>
       </Link>
 
       <div
@@ -101,11 +104,6 @@ function FileTreeNode({ item }: FileTreeNodeProps) {
         <ul className="border-l border-muted pl-4 ml-4 mt-1 space-y-1 py-1">
           {item?.links &&
             Object.keys(item.links as FolderItem).map((key, index) => {
-              console.log({
-                ...item.links[key],
-                type: "bookmark",
-              });
-
               return (
                 <FileTreeNode
                   key={index}

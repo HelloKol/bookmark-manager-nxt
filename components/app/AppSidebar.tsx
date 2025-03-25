@@ -10,42 +10,16 @@ import {
 import FileTree from "@/components/app/FileTree/FileTree";
 import { useAppContext } from "@/context/AppProvider";
 import { useFetchFolders } from "@/hooks/data/useFetchFolders";
-
-const fileTreeData = [
-  {
-    name: "Project Files",
-    type: "folder" as const,
-    children: [
-      { name: "package.json", type: "file" as const },
-      { name: "tsconfig.json", type: "file" as const },
-      { name: "README.md", type: "file" as const },
-    ],
-  },
-  {
-    name: "src",
-    type: "folder" as const,
-    children: [
-      { name: "index.ts", type: "file" as const },
-      { name: "app.tsx", type: "file" as const },
-      { name: "styles.css", type: "file" as const },
-    ],
-  },
-  {
-    name: "components",
-    type: "folder" as const,
-    children: [
-      { name: "Button.tsx", type: "file" as const },
-      { name: "Card.tsx", type: "file" as const },
-      { name: "Input.tsx", type: "file" as const },
-    ],
-  },
-  { name: ".gitignore", type: "file" as const },
-  { name: ".env.example", type: "file" as const },
-];
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { useState } from "react";
+import CreateNewFolder from "../CreateNewFolder";
+import { Button } from "../ui/button";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, userLoading } = useAppContext();
   const state = useFetchFolders(user?.uid || null, userLoading);
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
 
   const renderFileTree = () => {
     if (state.status === "loading" || userLoading === "loading")
@@ -60,7 +34,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>LOGO</SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Folders</SidebarGroupLabel>
+          <SidebarGroupLabel>
+            <Link href="/" className="text-sm">
+              View all
+            </Link>
+          </SidebarGroupLabel>
+          <SidebarGroupLabel>
+            <Link href="/uncategorised" className="text-sm">
+              Uncategorised
+            </Link>
+          </SidebarGroupLabel>
+          <SidebarGroupLabel className="flex justify-between">
+            <p className="text-sm">3 Collections</p>
+            <Button
+              variant={"ghost"}
+              onClick={() => setIsFolderModalOpen(true)}
+            >
+              <Plus className="h-6 w-6" />
+            </Button>
+            <CreateNewFolder
+              isFolderModalOpen={isFolderModalOpen}
+              setIsFolderModalOpen={setIsFolderModalOpen}
+            />
+          </SidebarGroupLabel>
           {renderFileTree()}
         </SidebarGroup>
       </SidebarContent>

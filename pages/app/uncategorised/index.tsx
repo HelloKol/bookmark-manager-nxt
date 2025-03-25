@@ -1,10 +1,14 @@
 import React from "react";
 import Header from "@/components/Header";
 import BookmarkList from "@/components/BookmarkList";
-import { useFetchAllBookmarks } from "@/hooks/data/useFetchAllBookmarks";
+import { useFetchUncategorisedBookmarks } from "@/hooks/data/useFetchUncategorisedBookmarks";
 
-export default function AllBookmarks() {
-  const { data: bookmarks, isLoading, error } = useFetchAllBookmarks();
+export default function UncategorisedBookmarks() {
+  const {
+    data: bookmarks,
+    isLoading,
+    error,
+  } = useFetchUncategorisedBookmarks();
 
   return (
     <div className="container mx-auto p-4">
