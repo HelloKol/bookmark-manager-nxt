@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { ref, onValue } from "firebase/database";
+import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
 interface AppContextType {
@@ -29,42 +29,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     "loading" | "error" | "success"
   >("loading");
 
-  // Listen for authentication state changes
+  console.log("user", user);
+
   useEffect(() => {
     setIsUserLoading("loading");
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Fetch additional user details from Realtime Database
-        const userRef = ref(db, `users/${firebaseUser.uid}`);
-        onValue(userRef, (snapshot) => {
-          if (snapshot.exists()) {
-            const userData = snapshot.val();
+        try {
+          const userRef = doc(db, `users/${firebaseUser.uid}`);
+          const userSnap = await getDoc(userRef);
+
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
             setUser({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
-              firstName: userData.firstName,
-              lastName: userData.lastName,
-              profileImageUrl: userData.profileImageUrl,
+              firstName: userData.firstName || "",
+              lastName: userData.lastName || "",
+              profileImageUrl: userData.profileImageUrl || "",
             });
           } else {
-            // If no additional details are found, set only the basic user info
+            // If user document doesn't exist, just store basic auth data
             setUser({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
             });
           }
-        });
 
-        setIsUserLoading("success");
+          setIsUserLoading("success");
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          setIsUserLoading("error");
+        }
       } else {
-        setUser(null); // Clear user state if not authenticated
+        setUser(null);
         setIsUserLoading("success");
       }
     });
 
-    // Cleanup subscription on unmount
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
 
   return (
@@ -79,7 +83,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 export const useAppContext = () => {
   const context = useContext(AppContext);
   if (!context) {
-    throw new Error("useAppContext must be used within a AppProvider");
+    throw new Error("useAppContext must be used within an AppProvider");
   }
   return context;
 };

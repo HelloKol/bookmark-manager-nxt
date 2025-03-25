@@ -1,15 +1,6 @@
 import React, { useState } from "react";
-import Link from "next/link";
 import { useAppContext } from "@/context/AppProvider";
-import ShareFolder from "./ShareFolder";
-import {
-  DropdownMenuRoot,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "./ui/button";
-import { MoreHorizontal } from "lucide-react";
 import { Textarea } from "./ui/textarea";
 import { Separator } from "./app/Sidebar/separator";
 import BookmarkPreviewDetailed from "./BookmarkPreviews/BookmarkPreviewDetailed";
@@ -27,19 +18,12 @@ export default function BookmarkList({
   error,
 }: BookmarkListProps) {
   const { searchTerm } = useAppContext();
-  const [urls, setUrls] = useState<string[]>([]);
   const [textAreaValue, setTextAreaValue] = useState<string>("");
 
   // Handle change in textarea (split URLs by newline)
   const handleUrlsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setTextAreaValue(value);
-
-    const urlsArray = value
-      .split("\n") // Split by new lines
-      .map((url) => url.trim())
-      .filter((url) => url); // Filter out empty URLs
-    setUrls(urlsArray);
   };
 
   // Handle keydown event to detect Enter or Shift + Enter
@@ -86,36 +70,20 @@ export default function BookmarkList({
           </Button>
         </div>
 
-        {filteredBookmarks.map((bookmark) => {
-          return (
-            <div
-              key={bookmark.id}
-              className="col-span-13 lg:col-span-6 xl:col-span-4 mb-5 lg:mb-8"
-            >
-              {/* Dropdown Menu */}
-              {/* <DropdownMenuRoot>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreHorizontal className="h-4 w-4" />
-                    <span className="sr-only">Open menu</span>
-                  </Button>
-                </DropdownMenuTrigger>
-
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <ShareFolder
-                      userId={user?.uid || ""}
-                      folderId={folder.id}
-                      folderData={folder}
-                    />
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenuRoot> */}
-
-              <BookmarkPreviewDetailed preview={bookmark} />
-            </div>
-          );
-        })}
+        {filteredBookmarks.map((bookmark) => (
+          <div
+            key={bookmark.id}
+            className="col-span-13 lg:col-span-6 xl:col-span-4 mb-5 lg:mb-8"
+          >
+            <BookmarkPreviewDetailed
+              preview={{
+                ...bookmark,
+                requestUrl: bookmark.url,
+                ogUrl: bookmark.url,
+              }}
+            />
+          </div>
+        ))}
       </div>
     </div>
   );

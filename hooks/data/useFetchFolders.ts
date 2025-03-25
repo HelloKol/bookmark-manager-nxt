@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
-import { ref, onValue } from "firebase/database";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { Bookmark } from "@/types";
+import { useQuery } from "@tanstack/react-query";
 
 interface Folder {
   id: string;
   name: string;
   slug: string;
-  links?: any[]; // Optional: Include links if needed
+  links?: Record<string, Omit<Bookmark, "id">>; // Optional: Include links if needed
 }
 
 type FetchState =
@@ -14,43 +15,55 @@ type FetchState =
   | { status: "error"; error: string }
   | { status: "success"; folders: Folder[] };
 
+/**
+ * Fetches folders from Firestore
+ * @param userId - The user's ID
+ * @returns A promise resolving to an array of folders
+ */
+const fetchFolders = async (userId: string): Promise<Folder[]> => {
+  if (!userId) {
+    return [];
+  }
+
+  const foldersDocRef = doc(db, "users", userId, "data", "folders");
+  const snapshot = await getDoc(foldersDocRef);
+
+  if (!snapshot.exists()) {
+    return [];
+  }
+
+  const data = snapshot.data();
+
+  return Object.entries(data || {}).map(([key, value]) => ({
+    id: key,
+    name: value.name,
+    slug: value.slug,
+    links: value.links || {},
+  }));
+};
+
 export const useFetchFolders = (
   userId: string | null,
   userLoading: string
 ): FetchState => {
-  const [state, setState] = useState<FetchState>({ status: "loading" });
+  const query = useQuery({
+    queryKey: ["folders", userId],
+    queryFn: () => fetchFolders(userId || ""),
+    enabled: !!userId && userLoading !== "loading",
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-  useEffect(() => {
-    setState({ status: "loading" });
+  if (query.isLoading || userLoading === "loading") {
+    return { status: "loading" };
+  }
 
-    if (userLoading === "loading") {
-      setState({ status: "loading" });
-      return;
-    }
+  if (query.isError) {
+    return { status: "error", error: (query.error as Error).message };
+  }
 
-    const foldersRef = ref(db, `users/${userId}/folders`);
-    const unsubscribe = onValue(
-      foldersRef,
-      (snapshot) => {
-        const data = snapshot.val();
-        const folders: Folder[] = data
-          ? Object.entries(data).map(([key, value]: any) => ({
-              id: key,
-              name: value.name,
-              slug: value.slug,
-              links: value.links, // Optional: Include links if needed
-            }))
-          : [];
+  if (!userId) {
+    return { status: "error", error: "No user ID provided" };
+  }
 
-        setState({ status: "success", folders });
-      },
-      (error) => {
-        setState({ status: "error", error: error.message });
-      }
-    );
-
-    return () => unsubscribe(); // Cleanup listener on unmount
-  }, [userId, userLoading]);
-
-  return state;
+  return { status: "success", folders: query.data || [] };
 };

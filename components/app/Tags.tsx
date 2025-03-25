@@ -1,21 +1,8 @@
 import { useAppContext } from "@/context/AppProvider";
 import { db } from "@/lib/firebase";
-import { get, ref } from "firebase/database";
-import React, { useEffect, useState } from "react";
-
-const fetchUserTags = async (): Promise<Tag[]> => {
-  const tagsRef = ref(db, "tags");
-  const snapshot = await get(tagsRef);
-
-  if (!snapshot.exists()) return [];
-
-  const tags: Tag[] = [];
-  Object.entries(snapshot.val()).forEach(([tagId, tagData]: [string, any]) => {
-    tags.push({ id: tagId, name: tagData.name, tagColor: tagData.tagColor });
-  });
-
-  return tags;
-};
+import { doc, getDoc } from "firebase/firestore";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
 
 interface Tag {
   id: string;
@@ -23,19 +10,55 @@ interface Tag {
   tagColor: string;
 }
 
+interface TagData {
+  name: string;
+  color?: string;
+  links?: Record<string, boolean>;
+  folders?: Record<string, boolean>;
+}
+
+const fetchTags = async (): Promise<Tag[]> => {
+  try {
+    const tagsDocRef = doc(db, "tags", "data");
+    const snapshot = await getDoc(tagsDocRef);
+
+    if (!snapshot.exists()) return [];
+
+    const tagsData = snapshot.data();
+    const tags: Tag[] = [];
+
+    Object.entries(tagsData).forEach(([tagId, tagData]) => {
+      tags.push({
+        id: tagId,
+        name: (tagData as TagData).name,
+        tagColor: (tagData as TagData).color || "#000000",
+      });
+    });
+
+    return tags;
+  } catch (error) {
+    console.error("Error fetching tags:", error);
+    return [];
+  }
+};
+
 export default function Tags() {
   const { user } = useAppContext();
-  const [tags, setTags] = useState<Tag[]>([]);
 
-  useEffect(() => {
-    if (!user) return;
-    const fetchTags = async () => {
-      const userTags = await fetchUserTags();
-      setTags(userTags);
-    };
+  const {
+    data: tags = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["tags"],
+    queryFn: fetchTags,
+    enabled: !!user, // Only fetch when user is available
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+  });
 
-    fetchTags();
-  }, [user]);
+  if (isLoading) return <div>Loading tags...</div>;
+  if (error) return <div>Error loading tags</div>;
+  if (tags.length === 0) return null;
 
   return (
     <div className="flex gap-4 mt-4">

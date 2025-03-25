@@ -4,21 +4,24 @@ import { toast } from "react-toastify";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Plus } from "lucide-react";
 import { Input } from "./ui/input";
-// import TagSelectorDefault from "./app/TagSelector";
+
+interface FolderType {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 interface CreateNewBookmarkProps {
   folderId?: string; // Make folderId optional
-  folders: any;
+  folders: FolderType[] | null;
 }
 
 const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({

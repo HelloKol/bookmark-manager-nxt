@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ref, onValue } from "firebase/database";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAppContext } from "@/context/AppProvider";
 
@@ -17,36 +17,24 @@ type FirebaseBookmarks = Record<string, Omit<Bookmark, "id">>;
  * @param userId - The user's ID.
  * @returns A promise resolving to an array of bookmarks.
  */
-const fetchBookmarks = (userId: string): Promise<Bookmark[]> => {
-  return new Promise((resolve, reject) => {
-    if (!userId) {
-      resolve([]);
-      return;
-    }
+const fetchBookmarks = async (userId: string): Promise<Bookmark[]> => {
+  if (!userId) {
+    return [];
+  }
 
-    const bookmarksRef = ref(db, `users/${userId}/bookmarks`);
+  const bookmarksDocRef = doc(db, "users", userId, "data", "bookmarks");
+  const snapshot = await getDoc(bookmarksDocRef);
 
-    const unsubscribe = onValue(
-      bookmarksRef,
-      (snapshot) => {
-        const data: FirebaseBookmarks | null = snapshot.val();
+  if (!snapshot.exists()) {
+    return [];
+  }
 
-        const bookmarks: Bookmark[] = data
-          ? Object.entries(data).map(([id, value]) => ({
-              id,
-              ...value,
-            }))
-          : [];
+  const data = snapshot.data() as FirebaseBookmarks;
 
-        resolve(bookmarks);
-      },
-      (error) => {
-        reject(error);
-      }
-    );
-
-    return () => unsubscribe(); // Cleanup subscription
-  });
+  return Object.entries(data).map(([id, value]) => ({
+    id,
+    ...value,
+  }));
 };
 
 /**

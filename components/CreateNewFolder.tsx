@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ref, push, set } from "firebase/database";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { generateSlug } from "@/lib/utils";
 import { toast } from "react-toastify";
@@ -41,14 +41,33 @@ const CreateNewFolder: React.FC<Props> = ({
 
     const createFolderPromise = new Promise<void>(async (resolve, reject) => {
       try {
-        const folderRef = ref(db, `users/${user.uid}/folders`);
-        const newFolderRef = push(folderRef); // Create a new folder with a unique ID
+        // Generate a unique ID for the folder
+        const folderId =
+          Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
 
-        await set(newFolderRef, {
+        // Get the folders document
+        const foldersDocRef = doc(db, "users", user.uid, "data", "folders");
+        const foldersDoc = await getDoc(foldersDocRef);
+
+        // Check if folders document exists and get its data
+        const foldersData = foldersDoc.exists() ? foldersDoc.data() : {};
+
+        // Create new folder data
+        const newFolderData = {
           name: folderName.trim(),
           slug,
-          createdAt: Date.now(),
-        });
+          createdAt: new Date().toISOString(),
+          links: {},
+        };
+
+        // Add the new folder to the existing folders data
+        const updatedFoldersData = {
+          ...foldersData,
+          [folderId]: newFolderData,
+        };
+
+        // Save the updated folders document
+        await setDoc(foldersDocRef, updatedFoldersData);
 
         resolve();
       } catch (error) {

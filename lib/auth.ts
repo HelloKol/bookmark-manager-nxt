@@ -6,7 +6,7 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 import { User } from "firebase/auth";
-import { ref, set } from "firebase/database";
+import { doc, setDoc } from "firebase/firestore";
 
 export const signup = async (
   email: string,
@@ -21,9 +21,9 @@ export const signup = async (
     password
   );
 
-  // Store additional user details in Realtime Database
+  // Store additional user details in Firestore
   const user = userCredential.user;
-  await set(ref(db, `users/${user.uid}`), {
+  await setDoc(doc(db, `users/${user.uid}`), {
     firstName,
     lastName,
     email,

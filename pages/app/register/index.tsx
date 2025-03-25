@@ -7,13 +7,9 @@ import { Button } from "@/components/LoginForm/button";
 import { Input } from "@/components/LoginForm/input";
 import { Label } from "@/components/LoginForm/label";
 import Link from "next/link";
-import { auth, db } from "../../../lib/firebase";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  UserCredential,
-} from "firebase/auth";
-import { ref, set } from "firebase/database";
+import { auth, db } from "@/lib/firebase";
+import { createUserWithEmailAndPassword, UserCredential } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 import { toast } from "react-toastify";
 import { FirebaseError } from "firebase/app";
 
@@ -69,7 +65,7 @@ export default function Signup() {
           const user = userCredential.user;
 
           // Store additional user details in Realtime Database
-          await set(ref(db, `users/${user.uid}`), {
+          await setDoc(doc(db, `users/${user.uid}`), {
             firstName,
             lastName,
             email,

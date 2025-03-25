@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { ref, onValue, remove, set, push } from "firebase/database";
+import React from "react";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import BookmarkPreviewBasic from "@/components/BookmarkPreviews/BookmarkPreviewBasic";
 import BookmarkPreviewCompact from "@/components/BookmarkPreviews/BookmarkPreviewCompact";
 import BookmarkPreviewDetailed from "@/components/BookmarkPreviews/BookmarkPreviewDetailed";
@@ -10,6 +10,7 @@ import ViewCompact from "@/components/svg/ViewCompact";
 import ViewDetailed from "@/components/svg/ViewDetailed";
 import { useAppContext } from "@/context/AppProvider";
 import { toast } from "react-toastify";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface Preview {
   favicon?: string;
@@ -18,6 +19,7 @@ interface Preview {
   ogDescription?: string;
   requestUrl: string;
   ogUrl: string;
+  id?: string;
 }
 
 interface User {
@@ -53,247 +55,315 @@ const getRandomModernMacOSTagColor = () => {
   ];
 };
 
+/**
+ * Fetches links for a specific folder
+ */
+const fetchLinks = async (
+  userId: string,
+  folderId: string
+): Promise<Preview[]> => {
+  if (!userId || !folderId) {
+    return [];
+  }
+
+  const folderDocRef = doc(db, "users", userId, "data", "folders");
+  const snapshot = await getDoc(folderDocRef);
+
+  if (!snapshot.exists()) {
+    return [];
+  }
+
+  const foldersData = snapshot.data();
+  const folderData = foldersData[folderId];
+
+  if (!folderData || !folderData.links) {
+    return [];
+  }
+
+  return Object.values(folderData.links);
+};
+
+/**
+ * Fetches all folders
+ */
+const fetchFolders = async (userId: string): Promise<Folder[]> => {
+  if (!userId) {
+    return [];
+  }
+
+  const foldersDocRef = doc(db, "users", userId, "data", "folders");
+  const snapshot = await getDoc(foldersDocRef);
+
+  if (!snapshot.exists()) {
+    return [];
+  }
+
+  const foldersData = snapshot.data();
+
+  return Object.keys(foldersData).map((id) => ({
+    id,
+    ...foldersData[id],
+  }));
+};
+
 export default function Bookmarks({ user, folderId }: Props) {
   const { searchTerm } = useAppContext();
-  const [links, setLinks] = useState<Preview[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (!user || !folderId) return;
+  // Fetch links for the current folder
+  const linksQuery = useQuery({
+    queryKey: ["links", user?.uid, folderId],
+    queryFn: () => fetchLinks(user?.uid || "", folderId),
+    enabled: !!user?.uid && !!folderId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-    const folderRef = ref(db, `users/${user.uid}/folders/${folderId}`);
+  // Fetch all folders
+  const foldersQuery = useQuery({
+    queryKey: ["folders", user?.uid],
+    queryFn: () => fetchFolders(user?.uid || ""),
+    enabled: !!user?.uid,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-    const unsubscribe = onValue(folderRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const folderData = snapshot.val();
-
-        const linksObj = folderData.links || {};
-        const linksArray: Preview[] = Object.values(linksObj);
-
-        setLinks(linksArray);
-      } else {
-        setLinks([]);
+  // Mutation for deleting a link
+  const deleteMutation = useMutation({
+    mutationFn: async (linkRequestUrl: string) => {
+      if (!user) {
+        throw new Error("You must be logged in to delete a link");
       }
-    });
 
-    return () => unsubscribe();
-  }, [user, folderId]);
+      const folderDocRef = doc(db, "users", user.uid, "data", "folders");
+      const folderSnapshot = await getDoc(folderDocRef);
 
-  // Fetch all folders (to pass them into BookmarkPreviewBasic)
-  useEffect(() => {
-    if (!user) return;
-
-    const foldersRef = ref(db, `users/${user.uid}/folders`);
-
-    const unsubscribe = onValue(foldersRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const foldersData = snapshot.val();
-
-        const foldersArray: Folder[] = Object.keys(foldersData).map((id) => ({
-          id,
-          ...foldersData[id],
-        }));
-
-        setFolders(foldersArray);
-      } else {
-        setFolders([]);
+      if (!folderSnapshot.exists()) {
+        throw new Error("No folders found");
       }
-    });
 
-    return () => unsubscribe();
-  }, [user]);
+      const foldersData = folderSnapshot.data();
+      const folderData = foldersData[folderId];
 
-  // Delete link from current folder
-  const handleDelete = async (linkRequestUrl: string) => {
-    if (!user) {
-      toast.error("You must be logged in to delete a link");
-      return;
-    }
-
-    // Wrap the deletion logic in a promise
-    const updateBookmark = new Promise<void>(async (resolve, reject) => {
-      try {
-        const folderRef = ref(
-          db,
-          `users/${user.uid}/folders/${folderId}/links`
-        );
-        const snapshot = await onValueOnce(folderRef);
-
-        if (!snapshot.exists()) {
-          reject(new Error("No links found"));
-          return;
-        }
-
-        const linksObj = snapshot.val();
-        const linkId = Object.keys(linksObj).find(
-          (key) => linksObj[key].requestUrl === linkRequestUrl
-        );
-
-        if (!linkId) {
-          reject(new Error("Link not found"));
-          return;
-        }
-
-        await remove(
-          ref(db, `users/${user.uid}/folders/${folderId}/links/${linkId}`)
-        );
-        resolve();
-      } catch (error) {
-        reject(error);
+      if (!folderData || !folderData.links) {
+        throw new Error("No links found");
       }
-    });
 
-    // Use toast.promise to handle loading, success, and error states
-    toast.promise(updateBookmark, {
-      pending: "Deleting link...",
-      success: "Link deleted successfully!",
-      error: {
-        render: ({ data }) => {
-          if (data instanceof Error) {
-            return data.message || "Error deleting link";
-          }
-          return "Error deleting link";
+      const linksObj = folderData.links;
+      const linkId = Object.keys(linksObj).find(
+        (key) => linksObj[key].requestUrl === linkRequestUrl
+      );
+
+      if (!linkId) {
+        throw new Error("Link not found");
+      }
+
+      // Create updated version of the data without the link
+      const updatedLinks = { ...folderData.links };
+      delete updatedLinks[linkId];
+
+      // Update the entire folder document with the modified links
+      const updatedFolderData = {
+        ...foldersData,
+        [folderId]: {
+          ...folderData,
+          links: updatedLinks,
         },
-      },
-    });
+      };
+
+      await setDoc(folderDocRef, updatedFolderData);
+    },
+    onSuccess: () => {
+      toast.success("Link deleted successfully!");
+      // Invalidate queries to refetch the data
+      queryClient.invalidateQueries({
+        queryKey: ["links", user?.uid, folderId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["folders", user?.uid] });
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Error deleting link"
+      );
+    },
+  });
+
+  // Mutation for editing a link
+  const editMutation = useMutation({
+    mutationFn: async ({
+      oldLink,
+      newRequestUrl,
+      newFolderId,
+      newTags = [],
+    }: {
+      oldLink: Preview;
+      newRequestUrl: string;
+      newFolderId: string;
+      newTags?: string[];
+    }) => {
+      if (!user) {
+        throw new Error("You must be logged in to edit a link");
+      }
+
+      const foldersDocRef = doc(db, "users", user.uid, "data", "folders");
+      const foldersSnapshot = await getDoc(foldersDocRef);
+
+      if (!foldersSnapshot.exists()) {
+        throw new Error("No folders found");
+      }
+
+      const foldersData = foldersSnapshot.data();
+      const folderData = foldersData[folderId];
+
+      if (!folderData || !folderData.links) {
+        throw new Error("No links found");
+      }
+
+      const linksObj = folderData.links;
+      const linkId = Object.keys(linksObj).find(
+        (key) => linksObj[key].requestUrl === oldLink.requestUrl
+      );
+
+      if (!linkId) {
+        throw new Error("Link not found");
+      }
+
+      // Step 1: Update the link's URL and folder
+      if (folderId !== newFolderId) {
+        // Create a copy of the link with the new URL
+        const linkData = {
+          ...linksObj[linkId],
+          requestUrl: newRequestUrl,
+        };
+
+        // Remove from old folder
+        const updatedOldFolderLinks = { ...folderData.links };
+        delete updatedOldFolderLinks[linkId];
+
+        // Add to new folder
+        const newFolderData = foldersData[newFolderId] || {};
+        const newFolderLinks = newFolderData.links || {};
+
+        // Update both folders
+        const updatedFoldersData = {
+          ...foldersData,
+          [folderId]: {
+            ...folderData,
+            links: updatedOldFolderLinks,
+          },
+          [newFolderId]: {
+            ...newFolderData,
+            links: {
+              ...newFolderLinks,
+              [linkId]: linkData,
+            },
+          },
+        };
+
+        await setDoc(foldersDocRef, updatedFoldersData);
+      } else {
+        // Just update the URL in the same folder
+        const updatedLink = {
+          ...linksObj[linkId],
+          requestUrl: newRequestUrl,
+        };
+
+        const updatedLinks = {
+          ...folderData.links,
+          [linkId]: updatedLink,
+        };
+
+        const updatedFoldersData = {
+          ...foldersData,
+          [folderId]: {
+            ...folderData,
+            links: updatedLinks,
+          },
+        };
+
+        await setDoc(foldersDocRef, updatedFoldersData);
+      }
+
+      // Step 2: Update tags
+      const tagsDocRef = doc(db, "tags", "data");
+      const tagsSnapshot = await getDoc(tagsDocRef);
+      const existingTags = tagsSnapshot.exists() ? tagsSnapshot.data() : {};
+
+      const updatedTags = { ...existingTags };
+
+      for (const tagName of newTags) {
+        const tagId = Object.keys(existingTags).find(
+          (key) => existingTags[key].name === tagName
+        );
+
+        if (tagId) {
+          // Tag already exists, update it
+          updatedTags[tagId] = {
+            ...existingTags[tagId],
+            links: {
+              ...existingTags[tagId].links,
+              [linkId]: true,
+            },
+            folders: {
+              ...existingTags[tagId].folders,
+              [newFolderId]: true,
+            },
+          };
+        } else {
+          // Create a new tag with a unique ID
+          const newTagId = generateUniqueId();
+          updatedTags[newTagId] = {
+            name: tagName,
+            color: getRandomModernMacOSTagColor(),
+            links: { [linkId]: true },
+            folders: { [newFolderId]: true },
+          };
+        }
+      }
+
+      await setDoc(tagsDocRef, updatedTags);
+    },
+    onSuccess: () => {
+      toast.success("Link updated successfully!");
+      // Invalidate queries to refetch the data
+      queryClient.invalidateQueries({
+        queryKey: ["links", user?.uid, folderId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["folders", user?.uid] });
+      queryClient.invalidateQueries({ queryKey: ["tags"] });
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Error updating link"
+      );
+    },
+  });
+
+  // Handler for deleting a link
+  const handleDelete = (linkRequestUrl: string) => {
+    deleteMutation.mutate(linkRequestUrl);
   };
 
-  // Edit link: move to another folder and/or update requestUrl
-  const handleEdit = async (
+  // Handler for editing a link
+  const handleEdit = (
     oldLink: Preview,
     newRequestUrl: string,
     newFolderId: string,
-    newTags: string[] // Array of tag names
+    newTags: string[] = []
   ) => {
-    if (!user) {
-      toast.error("You must be logged in to edit a link");
-      return;
-    }
-
-    const updateBookmark = new Promise<void>(async (resolve, reject) => {
-      try {
-        const folderRef = ref(
-          db,
-          `users/${user.uid}/folders/${folderId}/links`
-        );
-        const snapshot = await onValueOnce(folderRef);
-        if (!snapshot.exists()) return;
-
-        const linksObj = snapshot.val();
-        const linkId = Object.keys(linksObj).find(
-          (key) => linksObj[key].requestUrl === oldLink.requestUrl
-        );
-
-        if (!linkId) return;
-
-        // Step 1: Update the link's URL and folder
-        if (folderId !== newFolderId) {
-          // Move link to a different folder
-          await remove(
-            ref(db, `users/${user.uid}/folders/${folderId}/links/${linkId}`)
-          );
-
-          const response = await fetch("/api/saveLinks", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: user.uid,
-              folderId: newFolderId,
-              url: newRequestUrl,
-            }),
-          });
-
-          if (!response.ok) {
-            reject(new Error("Failed to move and save link"));
-          }
-        } else {
-          // Update link in the same folder
-          const response = await fetch("/api/updateLink", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: user.uid,
-              folderId,
-              linkId,
-              requestUrl: newRequestUrl,
-            }),
-          });
-
-          if (!response.ok) {
-            reject(new Error("Failed to update link"));
-          }
-        }
-
-        // Step 2: Update tags
-        const tagsRef = ref(db, `tags`);
-        const tagsSnapshot = await onValueOnce(tagsRef);
-        const existingTags = tagsSnapshot.exists() ? tagsSnapshot.val() : {};
-
-        const updatedTags: Record<string, boolean> = {};
-
-        for (const tagName of newTags) {
-          const tagId = Object.keys(existingTags).find(
-            (key) => existingTags[key].name === tagName
-          );
-
-          if (tagId) {
-            // Tag already exists, reuse it
-            updatedTags[tagId] = true;
-          } else {
-            const tagColor = getRandomModernMacOSTagColor();
-
-            // Create a new tag
-            const newTagId = push(ref(db, "tags")).key;
-            await set(ref(db, `tags/${newTagId}`), {
-              name: tagName,
-              links: { [linkId]: true },
-              folders: { [newFolderId]: true },
-              tagColor: tagColor,
-            });
-            updatedTags[newTagId] = true;
-          }
-        }
-
-        // Update the link's tags
-        await set(
-          ref(
-            db,
-            `users/${user.uid}/folders/${newFolderId}/links/${linkId}/tags`
-          ),
-          updatedTags
-        );
-
-        resolve();
-      } catch (error) {
-        reject(error);
-      }
-    });
-
-    toast.promise(updateBookmark, {
-      pending: "Updating link...",
-      success: "Link updated successfully!",
-      error: {
-        render: ({ data }) => {
-          if (data instanceof Error) {
-            return data.message || "Error updating link";
-          }
-          return "Error updating link";
-        },
-      },
-    });
+    editMutation.mutate({ oldLink, newRequestUrl, newFolderId, newTags });
   };
 
   // Filter links based on searchTerm
-  const filteredLinks = searchTerm
-    ? links.filter((link) => {
-        const searchLower = searchTerm.toLowerCase();
-        return (
-          link.ogTitle?.toLowerCase().includes(searchLower) ||
-          link.ogDescription?.toLowerCase().includes(searchLower) ||
-          link.requestUrl.toLowerCase().includes(searchLower)
-        );
-      })
-    : links;
+  const links = linksQuery.data || [];
+  const filteredLinks = links.filter((link) => {
+    if (!searchTerm) return true;
+
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      link.ogTitle?.toLowerCase().includes(searchLower) ||
+      link.ogDescription?.toLowerCase().includes(searchLower) ||
+      link.requestUrl.toLowerCase().includes(searchLower)
+    );
+  });
 
   const tabs = [
     {
@@ -302,14 +372,18 @@ export default function Bookmarks({ user, folderId }: Props) {
       icon: <ViewBasic className="w-10 h-10 fill-black" />,
       content: (
         <>
-          {filteredLinks.length > 0 ? (
+          {linksQuery.isLoading ? (
+            <p>Loading links...</p>
+          ) : linksQuery.isError ? (
+            <p>Error loading links: {(linksQuery.error as Error).message}</p>
+          ) : filteredLinks.length > 0 ? (
             <div className="saved-links">
               {filteredLinks.map((link, index) => (
                 <BookmarkPreviewBasic
                   key={index}
                   preview={link}
                   currentFolderId={folderId}
-                  folders={folders}
+                  folders={foldersQuery.data || []}
                   onDelete={handleDelete}
                   onEdit={handleEdit}
                 />
@@ -327,7 +401,11 @@ export default function Bookmarks({ user, folderId }: Props) {
       icon: <ViewCompact className="w-6 h-6 fill-black" />,
       content: (
         <>
-          {filteredLinks.length > 0 ? (
+          {linksQuery.isLoading ? (
+            <p>Loading links...</p>
+          ) : linksQuery.isError ? (
+            <p>Error loading links: {(linksQuery.error as Error).message}</p>
+          ) : filteredLinks.length > 0 ? (
             <div className="saved-links">
               {filteredLinks.map((link, index) => (
                 <BookmarkPreviewCompact key={index} preview={link} />
@@ -345,7 +423,11 @@ export default function Bookmarks({ user, folderId }: Props) {
       icon: <ViewDetailed className="w-6 h-6 fill-black" />,
       content: (
         <>
-          {filteredLinks.length > 0 ? (
+          {linksQuery.isLoading ? (
+            <p>Loading links...</p>
+          ) : linksQuery.isError ? (
+            <p>Error loading links: {(linksQuery.error as Error).message}</p>
+          ) : filteredLinks.length > 0 ? (
             <div className="saved-links grid grid-cols-12 gap-4">
               {filteredLinks.map((link, index) => (
                 <div
@@ -367,16 +449,9 @@ export default function Bookmarks({ user, folderId }: Props) {
   return <PreviewCardToggle tabs={tabs} ariaLabel="View bookmarks" />;
 }
 
-// Firebase helper to get snapshot once
-async function onValueOnce(refObj: ReturnType<typeof ref>) {
-  return new Promise<any>((resolve, reject) => {
-    onValue(
-      refObj,
-      (snapshot) => {
-        resolve(snapshot);
-      },
-      (error) => reject(error),
-      { onlyOnce: true }
-    );
-  });
+// Helper function to generate a unique ID
+function generateUniqueId() {
+  const timestamp = Date.now().toString(36);
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}-${randomStr}`;
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ref, get } from "firebase/database";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../../lib/firebase"; // Adjust the path as necessary
 
 interface Folder {
@@ -17,12 +17,12 @@ const ShareFolder = ({ folderId }: { folderId: string }) => {
   const [folder, setFolder] = useState<Folder | null>(null);
 
   useEffect(() => {
-    const folderRef = ref(db, `sharedFolders/${folderId}`);
+    const folderRef = doc(db, `sharedFolders/${folderId}`);
 
-    get(folderRef)
+    getDoc(folderRef)
       .then((snapshot) => {
         if (snapshot.exists()) {
-          const folderData = snapshot.val();
+          const folderData = snapshot.data();
 
           // Convert links object to array
           const linksArray = folderData.links

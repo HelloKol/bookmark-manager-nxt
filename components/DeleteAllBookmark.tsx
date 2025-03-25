@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { ref, remove } from "firebase/database";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { toast } from "react-toastify";
 import { useAppContext } from "@/context/AppProvider";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,39 +24,65 @@ const DeleteAllBookmark: React.FC<DeleteAllBookmarkProps> = ({
 }: DeleteAllBookmarkProps) => {
   const { user } = useAppContext();
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  const removeAllBookmarksMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.uid) throw new Error("User not authenticated");
+
+      // Get the folders document
+      const foldersDocRef = doc(db, "users", user.uid, "data", "folders");
+      const foldersDoc = await getDoc(foldersDocRef);
+
+      if (!foldersDoc.exists()) {
+        throw new Error("Folders document not found");
+      }
+
+      const foldersData = foldersDoc.data();
+      const folderData = foldersData[folderId];
+
+      if (!folderData) {
+        throw new Error("Folder not found");
+      }
+
+      // Update the folder by removing all links but keeping other folder data
+      const updatedFolderData = {
+        ...foldersData,
+        [folderId]: {
+          ...folderData,
+          links: {}, // Empty the links object
+        },
+      };
+
+      await setDoc(foldersDocRef, updatedFolderData);
+    },
+    onSuccess: () => {
+      // Invalidate relevant queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ["folders"] });
+      queryClient.invalidateQueries({ queryKey: ["allBookmarks"] });
+      toast.success("All bookmarks removed successfully!");
+    },
+    onError: (error) => {
+      console.error(error);
+      toast.error("Error removing bookmarks");
+    },
+  });
 
   const handleRemoveAllBookmarks = async () => {
     if (!user || !folderId) return;
     setIsFolderModalOpen(false);
 
-    // Wrap the deletion logic in a promise
-    const removeBookmarksPromise = new Promise<void>(
-      async (resolve, reject) => {
-        try {
-          const bookmarksRef = ref(
-            db,
-            `users/${user.uid}/folders/${folderId}/links`
-          );
-          await remove(bookmarksRef); // Remove all bookmarks
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      }
-    );
-
-    // Use toast.promise to handle loading, success, and error states
-    toast.promise(removeBookmarksPromise, {
-      pending: "Removing all bookmarks...",
-      success: "All bookmarks removed successfully!",
-      error: "Error removing bookmarks",
-    });
+    removeAllBookmarksMutation.mutate();
   };
 
   return (
     <Dialog open={isFolderModalOpen} onOpenChange={setIsFolderModalOpen}>
       <DialogTrigger asChild>
-        <Button>Remove All Bookmarks</Button>
+        <Button disabled={removeAllBookmarksMutation.isPending}>
+          {removeAllBookmarksMutation.isPending
+            ? "Removing..."
+            : "Remove All Bookmarks"}
+        </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[525px]">
@@ -71,8 +98,12 @@ const DeleteAllBookmark: React.FC<DeleteAllBookmarkProps> = ({
           <Button variant="outline" onClick={() => setIsFolderModalOpen(false)}>
             Cancel
           </Button>
-          <Button type="submit" onClick={handleRemoveAllBookmarks}>
-            Save
+          <Button
+            type="submit"
+            onClick={handleRemoveAllBookmarks}
+            disabled={removeAllBookmarksMutation.isPending}
+          >
+            {removeAllBookmarksMutation.isPending ? "Removing..." : "Remove"}
           </Button>
         </DialogFooter>
       </DialogContent>

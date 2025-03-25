@@ -1,7 +1,8 @@
 import React from "react";
-import { ref, set } from "firebase/database";
+import { doc, setDoc } from "firebase/firestore";
 import { db } from "../lib/firebase"; // Adjust the path as necessary
 import { toast } from "react-toastify";
+import { useMutation } from "@tanstack/react-query";
 
 interface Folder {
   id: string;
@@ -16,45 +17,48 @@ interface Props {
 }
 
 export default function ShareFolder({ userId, folderId, folderData }: Props) {
-  const handleShare = async () => {
-    const createSharePromise = new Promise<void>(async (resolve, reject) => {
+  // Setup sharing mutation
+  const shareFolderMutation = useMutation({
+    mutationFn: async () => {
+      const sharedFolderDocRef = doc(db, "sharedFolders", folderId);
+      await setDoc(sharedFolderDocRef, {
+        ...folderData,
+        ownerId: userId,
+        createdAt: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
       try {
-        const sharedFolderRef = ref(db, `sharedFolders/${folderId}`);
-        await set(sharedFolderRef, {
-          ...folderData,
-          ownerId: userId,
+        // Generate shareable link
+        const shareableLink = `http://app.localhost:3000/share/${folderId}`;
+        navigator.clipboard.writeText(shareableLink).catch((error) => {
+          console.log("Failed to copy link: ", error);
         });
-
-        resolve();
+        toast.success("Folder shared successfully!");
       } catch (error) {
-        console.log(error);
-        reject(error);
+        console.error("Error generating link:", error);
+        toast.success("Folder shared successfully! (Failed to copy link)");
       }
-    });
+    },
+    onError: (error) => {
+      console.error("Error sharing folder:", error);
+      toast.error("Error sharing folder");
+    },
+  });
 
-    // Use toast.promise to handle loading, success, and error states
-    toast.promise(createSharePromise, {
-      pending: "Shariing folder...",
-      success: {
-        render() {
-          try {
-            // Generate shareable link
-            const shareableLink = `http://app.localhost:3000/share/${folderId}`;
-            navigator.clipboard.writeText(shareableLink).catch((error) => {
-              console.log("Failed to copy link: ", error);
-            });
-          } catch (error) {
-            console.log(error);
-          }
-
-          return `Folder shared successfully!`;
-        },
-      },
-      error: {
-        render: "Error shariing folder",
-      },
-    });
+  const handleShare = async () => {
+    shareFolderMutation.mutate();
   };
 
-  return <span onClick={handleShare}>Share Folder</span>;
+  return (
+    <span
+      onClick={handleShare}
+      className={`cursor-pointer ${
+        shareFolderMutation.isPending ? "opacity-50" : ""
+      }`}
+      style={{ pointerEvents: shareFolderMutation.isPending ? "none" : "auto" }}
+    >
+      {shareFolderMutation.isPending ? "Sharing..." : "Share Folder"}
+    </span>
+  );
 }

@@ -9,10 +9,11 @@ export default function UncategorisedBookmarks() {
     isLoading,
     error,
   } = useFetchUncategorisedBookmarks();
+  const bookmarkLength = bookmarks?.length || 0;
 
   return (
     <div className="container mx-auto p-4">
-      <Header />
+      <Header bookmarkLength={bookmarkLength} />
       <BookmarkList
         bookmarks={bookmarks || []}
         isLoading={isLoading}

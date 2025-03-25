@@ -5,10 +5,11 @@ import { useFetchAllBookmarks } from "@/hooks/data/useFetchAllBookmarks";
 
 export default function AllBookmarks() {
   const { data: bookmarks, isLoading, error } = useFetchAllBookmarks();
+  const bookmarkLength = bookmarks?.length || 0;
 
   return (
     <div className="container mx-auto p-4">
-      <Header />
+      <Header bookmarkLength={bookmarkLength} />
       <BookmarkList
         bookmarks={bookmarks || []}
         isLoading={isLoading}

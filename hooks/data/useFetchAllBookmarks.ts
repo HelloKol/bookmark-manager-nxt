@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { db } from "@/lib/firebase";
-import { ref, onValue } from "firebase/database";
+import { doc, getDoc } from "firebase/firestore";
 import { useAppContext } from "@/context/AppProvider";
 
 interface Bookmark {
@@ -25,69 +25,57 @@ type FirebaseBookmarks = Record<string, Omit<Bookmark, "id">>;
  * @param userId - The user's ID.
  * @returns A promise resolving to an array of bookmarks.
  */
-const fetchBookmarks = (userId: string): Promise<Bookmark[]> => {
-  return new Promise((resolve, reject) => {
-    if (!userId) {
-      resolve([]);
-      return;
-    }
+const fetchBookmarks = async (userId: string): Promise<Bookmark[]> => {
+  if (!userId) {
+    return [];
+  }
 
-    const foldersRef = ref(db, `users/${userId}/folders`);
-    const bookmarksRef = ref(db, `users/${userId}/bookmarks`);
+  const foldersDocRef = doc(db, "users", userId, "data", "folders");
+  const bookmarksDocRef = doc(db, "users", userId, "data", "bookmarks");
 
-    let allBookmarks: Bookmark[] = [];
+  let allBookmarks: Bookmark[] = [];
 
-    const foldersUnsubscribe = onValue(
-      foldersRef,
-      (snapshot) => {
-        const data: FirebaseFolders | null = snapshot.val();
-        if (data) {
-          const foldersList: FolderType[] = Object.entries(data).map(
-            ([id, folder]) => ({
-              id,
-              ...folder,
-              links: folder.links || {},
-            })
-          );
+  // Get folders bookmarks
+  const foldersSnapshot = await getDoc(foldersDocRef);
+  if (foldersSnapshot.exists()) {
+    const data = foldersSnapshot.data() as FirebaseFolders;
 
-          const folderBookmarks: Bookmark[] = foldersList.flatMap((folder) =>
-            Object.entries(folder.links).map(([linkId, link]) => ({
-              id: linkId,
-              ...link,
-              folderId: folder.id,
-            }))
-          );
-
-          allBookmarks = [...allBookmarks, ...folderBookmarks];
-        }
-      },
-      (error) => reject(error)
+    const foldersList: FolderType[] = Object.entries(data).map(
+      ([id, folder]) => ({
+        id,
+        ...folder,
+        links: folder.links || {},
+      })
     );
 
-    const bookmarksUnsubscribe = onValue(
-      bookmarksRef,
-      (snapshot) => {
-        const data: FirebaseBookmarks | null = snapshot.val();
-        if (data) {
-          const bookmarksList: Bookmark[] = Object.entries(data).map(
-            ([id, bookmark]) => ({
-              id,
-              ...bookmark,
-            })
-          );
-
-          allBookmarks = [...allBookmarks, ...bookmarksList];
-        }
-        resolve(allBookmarks);
-      },
-      (error) => reject(error)
+    const folderBookmarks: Bookmark[] = foldersList.flatMap((folder) =>
+      Object.entries(folder.links || {}).map(([linkId, link]) => ({
+        id: linkId,
+        ...link,
+        folderId: folder.id,
+      }))
     );
 
-    return () => {
-      foldersUnsubscribe();
-      bookmarksUnsubscribe();
-    };
-  });
+    allBookmarks = allBookmarks.concat(folderBookmarks);
+  }
+
+  // Get uncategorized bookmarks
+  const bookmarksSnapshot = await getDoc(bookmarksDocRef);
+  if (bookmarksSnapshot.exists()) {
+    const data = bookmarksSnapshot.data() as FirebaseBookmarks;
+
+    const bookmarksList: Bookmark[] = Object.entries(data).map(
+      ([id, bookmark]) => ({
+        id,
+        ...bookmark,
+        folderId: "", // Ensure these are marked as non-folder bookmarks
+      })
+    );
+
+    allBookmarks = allBookmarks.concat(bookmarksList);
+  }
+
+  return allBookmarks;
 };
 
 /**
@@ -98,7 +86,7 @@ export const useFetchAllBookmarks = () => {
 
   return useQuery<Bookmark[]>({
     queryKey: ["allBookmarks", user?.uid],
-    queryFn: () => (user?.uid ? fetchBookmarks(user.uid) : Promise.resolve([])),
+    queryFn: () => fetchBookmarks(user?.uid || ""),
     enabled: !!user?.uid,
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
     retry: false, // Disable automatic retries on error

@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { toast } from "react-toastify";
-import { ref, update } from "firebase/database";
+import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAppContext } from "@/context/AppProvider";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
+import { useMutation } from "@tanstack/react-query";
 
 interface Props {
   isDialogOpen: boolean;
@@ -53,6 +54,69 @@ const EditProfileModal: React.FC<Props> = ({ isDialogOpen, setDialogOpen }) => {
     defaultValues: userProfile,
   });
 
+  // Upload image to Cloudinary
+  const uploadImageToCloudinary = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append(
+      "upload_preset",
+      process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!
+    );
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+    const data = await res.json();
+    return data.secure_url;
+  };
+
+  // Use TanStack Query mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: UserProfile) => {
+      if (!userProfile?.uid) {
+        throw new Error("User ID not found");
+      }
+
+      // If a new image is selected, upload it to Cloudinary
+      let profileImageUrl = userProfile?.profileImageUrl;
+      if (selectedImage) {
+        profileImageUrl = await uploadImageToCloudinary(selectedImage);
+      }
+
+      const updates = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        profileImageUrl,
+      };
+
+      const userDocRef = doc(db, "users", userProfile.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        await updateDoc(userDocRef, updates);
+      } else {
+        await setDoc(userDocRef, {
+          ...updates,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      return updates;
+    },
+    onSuccess: () => {
+      toast.success("Profile updated successfully!");
+      setDialogOpen(false);
+    },
+    onError: (error) => {
+      console.error("Error updating profile:", error);
+      toast.error("Failed to update profile.");
+    },
+  });
+
   const handleImageClick = () => {
     fileInputRef.current?.click();
   };
@@ -80,51 +144,8 @@ const EditProfileModal: React.FC<Props> = ({ isDialogOpen, setDialogOpen }) => {
     }
   };
 
-  // Upload image to Cloudinary
-  const uploadImageToCloudinary = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append(
-      "upload_preset",
-      process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!
-    );
-
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/upload`,
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
-    const data = await res.json();
-    return data.secure_url;
-  };
-
-  const onSubmit = async (data: UserProfile) => {
-    // Create a promise for the entire update process
-    const updateProfilePromise = (async () => {
-      // If a new image is selected, upload it to Cloudinary
-      let profileImageUrl = userProfile?.profileImageUrl;
-      if (selectedImage && userProfile) {
-        profileImageUrl = await uploadImageToCloudinary(selectedImage);
-      }
-
-      const updates = {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        profileImageUrl,
-      };
-
-      const userRef = ref(db, `users/${userProfile?.uid}`);
-      await update(userRef, updates);
-    })();
-
-    // Attach the toast.promise to your promise
-    toast.promise(updateProfilePromise, {
-      pending: "Updating your profile...",
-      success: "Profile updated successfully!",
-      error: "Failed to update profile.",
-    });
+  const onSubmit = (data: UserProfile) => {
+    updateProfileMutation.mutate(data);
   };
 
   return (
@@ -195,11 +216,12 @@ const EditProfileModal: React.FC<Props> = ({ isDialogOpen, setDialogOpen }) => {
               type="button"
               variant="outline"
               onClick={() => setDialogOpen(false)}
+              disabled={updateProfileMutation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" onClick={() => setDialogOpen(false)}>
-              Save
+            <Button type="submit" disabled={updateProfileMutation.isPending}>
+              {updateProfileMutation.isPending ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </form>
