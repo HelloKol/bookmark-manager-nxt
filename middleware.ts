@@ -12,8 +12,6 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host") || "";
   const subdomain = host.split(".")[0];
 
-  console.log("Subdomain:", subdomain);
-
   // Session cookie and protected/auth paths
   const sessionCookie = request.cookies.get("session")?.value;
   const authPaths = [
@@ -93,6 +91,6 @@ export async function middleware(request: NextRequest) {
 // Exclude static files and Next.js internals from rewriting.
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|static/|images/|fonts/).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|static/|images/|fonts/|manifest.json).*)",
   ],
 };
