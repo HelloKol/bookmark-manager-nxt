@@ -1,7 +1,8 @@
 import type React from "react";
-import { useRef } from "react";
-import { auth } from "@/lib/firebase";
+import { useRef, useState } from "react";
 import { toast } from "react-toastify";
+import api from "@/lib/api";
+import { useAppContext } from "@/context/AppProvider";
 
 interface HtmlImportButtonProps {
   folderId: string;
@@ -9,61 +10,53 @@ interface HtmlImportButtonProps {
 
 export default function HtmlImportButton({ folderId }: HtmlImportButtonProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAppContext();
+  const [isImporting, setIsImporting] = useState(false);
 
   const handleButtonClick = () => {
     fileInputRef.current?.click();
   };
 
-  const handleCreateBookmark = async (urls: string[]) => {
+  const handleImportBookmarks = async (urls: string[]) => {
     if (urls.length === 0) return;
+    if (!user) return;
 
-    const user = auth.currentUser;
-    if (!user) return alert("Not authenticated");
+    setIsImporting(true);
 
-    // Wrap the entire operation in a promise
-    const createBookmarksPromise = new Promise<void>(
+    // Clean URLs before submitting
+    const cleanUrls = urls.map((url) => url.replace(/\/$/, ""));
+
+    // Wrap the entire operation in a promise for toast handling
+    const importBookmarksPromise = new Promise<void>(
       async (resolve, reject) => {
         try {
-          // Map through URLs and save them
-          const savePromises = urls.map(async (url) => {
-            const cleanUrl = url.replace(/\/$/, "");
-
-            const res = await fetch("/api/saveLinks", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                url: cleanUrl,
-                userId: user.uid,
-                folderId,
-              }),
-            });
-
-            if (!res.ok) {
-              const data = await res.json();
-              throw new Error(data.error || "Failed to save link");
-            }
+          // Use our API client instead of direct fetch
+          await api.saveLinks({
+            urls: cleanUrls,
+            userId: user.uid,
+            folderId: folderId || null,
           });
-
-          // Wait for all promises to resolve
-          await Promise.all(savePromises);
 
           resolve();
         } catch (error) {
           reject(error);
+        } finally {
+          setIsImporting(false);
         }
       }
     );
 
     // Use toast.promise to handle loading, success, and error states
-    toast.promise(createBookmarksPromise, {
-      pending: "Saving bookmarks...",
+    toast.promise(importBookmarksPromise, {
+      pending: `Importing ${urls.length} bookmarks...`,
       success: {
-        render: "Bookmarks saved successfully!",
+        render: `Successfully imported ${urls.length} bookmarks!`,
       },
       error: {
-        render: "Error saving bookmarks",
+        render: ({ data }) =>
+          `Error importing bookmarks: ${
+            data instanceof Error ? data.message : "Unknown error"
+          }`,
       },
     });
   };
@@ -75,7 +68,7 @@ export default function HtmlImportButton({ folderId }: HtmlImportButtonProps) {
 
     // Check if file is HTML
     if (!file.name.endsWith(".html") && !file.type.includes("html")) {
-      alert("Please select an HTML file");
+      toast.error("Please select an HTML file");
       return;
     }
 
@@ -86,10 +79,11 @@ export default function HtmlImportButton({ folderId }: HtmlImportButtonProps) {
       const parser = new DOMParser();
       const doc = parser.parseFromString(content, "text/html");
       const links = doc.querySelectorAll("a");
-      const parsedBookmarks = Array.from(links).map(
-        (link) => link.getAttribute("href") || "#"
-      );
-      handleCreateBookmark(parsedBookmarks);
+      const parsedBookmarks = Array.from(links)
+        .map((link) => link.getAttribute("href") || "")
+        .filter((url) => url && !url.startsWith("#")); // Filter out empty links and anchors
+
+      handleImportBookmarks(parsedBookmarks);
     };
     reader.readAsText(file);
   };
@@ -103,7 +97,11 @@ export default function HtmlImportButton({ folderId }: HtmlImportButtonProps) {
         accept=".html"
         className="hidden"
       />
-      <button onClick={handleButtonClick} className="flex items-center gap-2">
+      <button
+        onClick={handleButtonClick}
+        className="flex items-center gap-2"
+        disabled={isImporting}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="16"
@@ -120,7 +118,7 @@ export default function HtmlImportButton({ folderId }: HtmlImportButtonProps) {
           <polyline points="17 8 12 3 7 8" />
           <line x1="12" y1="3" x2="12" y2="15" />
         </svg>
-        Import
+        {isImporting ? "Importing..." : "Import"}
       </button>
     </div>
   );

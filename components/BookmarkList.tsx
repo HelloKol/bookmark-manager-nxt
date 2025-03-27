@@ -1,14 +1,20 @@
-import React, { useState } from "react";
+import React from "react";
 import { useAppContext } from "@/context/AppProvider";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Separator } from "./app/Sidebar/separator";
 import BookmarkPreviewDetailed from "./BookmarkPreviews/BookmarkPreviewDetailed";
-import { Bookmark } from "@/types";
-import { toast } from "react-toastify";
+import { useBookmarkCreation } from "@/hooks/useBookmarkCreation";
+
+interface Bookmark {
+  id: string;
+  title: string;
+  url: string;
+  folderId: string;
+}
 
 interface BookmarkListProps {
-  bookmarks: Bookmark[];
+  bookmarks: Bookmark[] | undefined;
   isLoading: boolean;
   error: Error | null;
 }
@@ -19,78 +25,10 @@ export default function BookmarkList({
   error,
 }: BookmarkListProps) {
   const { searchTerm, user } = useAppContext();
-  const [urls, setUrls] = useState<string[]>([]);
-  const [textAreaValue, setTextAreaValue] = useState<string>("");
 
-  // Handle change in textarea (split URLs by newline)
-  const handleUrlsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setTextAreaValue(value);
-
-    const urlsArray = value
-      .split("\n") // Split by new lines
-      .map((url) => url.trim())
-      .filter((url) => url); // Filter out empty URLs
-    setUrls(urlsArray);
-  };
-
-  const handleCreateBookmark = async () => {
-    if (urls.length === 0) return;
-    if (!user) return;
-
-    // Wrap the entire operation in a promise
-    const createBookmarksPromise = new Promise<void>(
-      async (resolve, reject) => {
-        try {
-          // Instead of multiple API calls, send all URLs in a single request
-          const cleanUrls = urls.map((url) => url.replace(/\/$/, ""));
-
-          console.log("Saving URLs:", cleanUrls);
-
-          const res = await fetch("/api/saveLinks", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              urls: cleanUrls, // Send array of URLs instead of single URL
-              userId: user.uid,
-              folderId: null, // Pass null if folderId is not provided
-            }),
-          });
-
-          if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.error || "Failed to save links");
-          }
-
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      }
-    );
-
-    // Use toast.promise to handle loading, success, and error states
-    toast.promise(createBookmarksPromise, {
-      pending: "Saving bookmarks...",
-      success: {
-        render: "Bookmarks saved successfully!",
-      },
-      error: {
-        render: ({ data }) =>
-          `Error saving bookmarks: ${
-            data instanceof Error ? data.message : "Unknown error"
-          }`,
-      },
-    });
-
-    // Clear textarea after submission
-    if (await createBookmarksPromise.then(() => true).catch(() => false)) {
-      setTextAreaValue("");
-      setUrls([]);
-    }
-  };
+  // Use the custom hook for bookmark creation
+  const { textAreaValue, handleUrlsChange, handleCreateBookmark, isCreating } =
+    useBookmarkCreation();
 
   // Filter links based on searchTerm
   const filteredBookmarks = bookmarks?.filter((bookmark) => {
@@ -119,10 +57,10 @@ export default function BookmarkList({
           <Button
             type="button"
             className="w-full mt-2"
-            disabled={!textAreaValue}
-            onClick={handleCreateBookmark}
+            disabled={!textAreaValue || isCreating}
+            onClick={() => handleCreateBookmark(user?.uid ?? "", null)}
           >
-            Create
+            {isCreating ? "Creating..." : "Create"}
           </Button>
         </div>
 

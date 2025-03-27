@@ -2,6 +2,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import ogs from "open-graph-scraper";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import {
+  SaveLinksRequest,
+  SaveLinksResponse,
+  SaveLinksErrorResponse,
+  SavedLink,
+} from "@/types";
 
 // Function to save link data to a specific folder or as a standalone bookmark
 async function saveLinkToDatabase(
@@ -11,7 +17,7 @@ async function saveLinkToDatabase(
     string,
     string | object | number | boolean | undefined | null
   >
-) {
+): Promise<SavedLink> {
   // Ensure the user document exists
   const userDocRef = doc(db, "users", userId);
   const userDoc = await getDoc(userDocRef);
@@ -61,7 +67,7 @@ async function saveLinkToDatabase(
     await setDoc(foldersDocRef, updatedFoldersData);
 
     console.log(`Link saved under folder ${folderId} with ID:`, linkId);
-    return { id: linkId, ...linkData };
+    return { id: linkId, ...linkData } as SavedLink;
   } else {
     // Save as a standalone bookmark
     const bookmarksDocRef = doc(db, "users", userId, "data", "bookmarks");
@@ -78,25 +84,25 @@ async function saveLinkToDatabase(
     await setDoc(bookmarksDocRef, updatedBookmarksData);
 
     console.log(`Bookmark saved without folder with ID:`, linkId);
-    return { id: linkId, ...linkData };
+    return { id: linkId, ...linkData } as SavedLink;
   }
 }
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse<SaveLinksResponse | SaveLinksErrorResponse>
 ) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { url, urls, userId, folderId } = req.body;
+  const { urls, userId, folderId } = req.body as SaveLinksRequest;
 
   // Check if we have at least one URL to process
-  if ((!url && !urls) || !userId) {
+  if (!urls || !userId) {
     return res.status(400).json({ error: "Missing URL(s) or userId" });
   }
 
   // Handle both single URL and array of URLs
-  const urlsToProcess = urls || (url ? [url] : []);
+  const urlsToProcess = urls || [];
 
   if (urlsToProcess.length === 0) {
     return res.status(400).json({ error: "No valid URLs provided" });

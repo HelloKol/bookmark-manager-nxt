@@ -1,6 +1,4 @@
 import React, { useState } from "react";
-import { auth } from "@/lib/firebase";
-import { toast } from "react-toastify";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +10,8 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Plus } from "lucide-react";
 import { Input } from "./ui/input";
+import { useAppContext } from "@/context/AppProvider";
+import { useBookmarkCreation } from "@/hooks/useBookmarkCreation";
 
 interface FolderType {
   id: string;
@@ -28,89 +28,14 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
   folderId,
   folders,
 }) => {
-  const [urls, setUrls] = useState<string[]>([]);
-  const [textAreaValue, setTextAreaValue] = useState<string>("");
+  const { user } = useAppContext();
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
-  const handleCreateBookmark = async () => {
-    if (urls.length === 0) return;
-
-    const user = auth.currentUser;
-    if (!user) return alert("Not authenticated");
-
-    // Wrap the entire operation in a promise
-    const createBookmarksPromise = new Promise<void>(
-      async (resolve, reject) => {
-        try {
-          // Map through URLs and save them
-          const savePromises = urls.map(async (url) => {
-            const cleanUrl = url.replace(/\/$/, "");
-
-            const res = await fetch("/api/saveLinks", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                url: cleanUrl,
-                userId: user.uid,
-                folderId: folderId || null, // Pass null if folderId is not provided
-              }),
-            });
-
-            if (!res.ok) {
-              const data = await res.json();
-              throw new Error(data.error || "Failed to save link");
-            }
-          });
-
-          // Wait for all promises to resolve
-          await Promise.all(savePromises);
-
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      }
-    );
-
-    // Use toast.promise to handle loading, success, and error states
-    toast.promise(createBookmarksPromise, {
-      pending: "Saving bookmarks...",
-      success: {
-        render: "Bookmarks saved successfully!",
-      },
-      error: {
-        render: "Error saving bookmarks",
-      },
-    });
-  };
-
-  // Handle change in textarea (split URLs by newline)
-  const handleUrlsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setTextAreaValue(value);
-
-    const urlsArray = value
-      .split("\n") // Split by new lines
-      .map((url) => url.trim())
-      .filter((url) => url); // Filter out empty URLs
-    setUrls(urlsArray);
-  };
-
-  // Handle keydown event to detect Enter or Shift + Enter
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      // If Shift is not held, we prevent the default action to avoid new line and fetch metadata
-      e.preventDefault();
-      handleCloseModal();
-      handleCreateBookmark();
-    }
-  };
+  // Use the custom hook for bookmark creation
+  const { textAreaValue, handleUrlsChange, handleCreateBookmark, isCreating } =
+    useBookmarkCreation();
 
   const handleCloseModal = () => {
-    setUrls([]);
-    setTextAreaValue("");
     setIsSearchModalOpen(false);
   };
 
@@ -131,11 +56,8 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
           <Textarea
             value={textAreaValue}
             onChange={handleUrlsChange}
-            onKeyDown={handleKeyDown}
             placeholder="Paste URLs here, one per line"
           />
-
-          {/* <TagSelectorDefault /> */}
 
           <div className="flex flex-col space-y-1">
             <label htmlFor="tags" className="text-sm">
@@ -178,12 +100,13 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
             </Button>
             <Button
               type="button"
+              disabled={isCreating}
               onClick={() => {
-                handleCreateBookmark();
+                handleCreateBookmark(user?.uid ?? "", folderId || null);
                 handleCloseModal();
               }}
             >
-              Save
+              {isCreating ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>

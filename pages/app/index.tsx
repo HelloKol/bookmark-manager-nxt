@@ -10,11 +10,7 @@ export default function AllBookmarks() {
   return (
     <div className="container mx-auto p-4">
       <Header bookmarkLength={bookmarkLength} />
-      <BookmarkList
-        bookmarks={bookmarks || []}
-        isLoading={isPending}
-        error={error}
-      />
+      <BookmarkList bookmarks={bookmarks} isLoading={isPending} error={error} />
     </div>
   );
 }
