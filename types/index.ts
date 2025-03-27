@@ -10,10 +10,18 @@ export interface Bookmark {
   [key: string]: string | object | number | boolean | undefined | null;
 }
 
+export interface Folder {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export interface SaveLinksRequest {
-  urls: string[];
+  url?: string;
+  urls?: string[];
   userId: string;
   folderId?: string | null;
+  tags?: string[];
 }
 
 export interface SavedLink extends Bookmark {

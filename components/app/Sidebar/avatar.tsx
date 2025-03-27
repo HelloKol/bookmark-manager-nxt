@@ -2,7 +2,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-function Avatar({ className, ...props }: React.ComponentProps<typeof any>) {
+function Avatar({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       data-slot="avatar"
@@ -18,7 +18,7 @@ function Avatar({ className, ...props }: React.ComponentProps<typeof any>) {
 function AvatarImage({
   className,
   ...props
-}: React.ComponentProps<typeof any>) {
+}: React.ImgHTMLAttributes<HTMLImageElement>) {
   return (
     <div
       data-slot="avatar-image"
@@ -31,7 +31,7 @@ function AvatarImage({
 function AvatarFallback({
   className,
   ...props
-}: React.ComponentProps<typeof any>) {
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       data-slot="avatar-fallback"

@@ -5,7 +5,7 @@ import Bookmarks from "@/components/Bookmarks";
 import CreateNewBookmark from "@/components/CreateNewBookmark";
 import DeleteAllBookmark from "@/components/DeleteAllBookmark";
 import ImportBookmark from "@/components/ImportBookmark";
-import { useFetchFoldersList } from "@/hooks/data/useFetchFolders";
+import { useFetchFoldersList } from "@/hooks/queries/useFetchFolders";
 
 const FolderPage: React.FC = () => {
   const router = useRouter();

@@ -9,7 +9,7 @@ import {
 } from "@/components/app/Sidebar/sidebar";
 import FileTree from "@/components/app/FileTree/FileTree";
 import Link from "next/link";
-import { Bookmark } from "lucide-react";
+import { Bookmark, Tag } from "lucide-react";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
@@ -30,6 +30,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarGroupLabel>
             <Link href="/uncategorised" className="text-base">
               Uncategorised
+            </Link>
+          </SidebarGroupLabel>
+          <SidebarGroupLabel>
+            <Link
+              href="/app/tags"
+              className="text-base flex items-center gap-2"
+            >
+              <Tag className="h-4 w-4" />
+              Tags
             </Link>
           </SidebarGroupLabel>
           <FileTree />

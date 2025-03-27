@@ -94,15 +94,15 @@ export default async function handler(
 ) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { urls, userId, folderId } = req.body as SaveLinksRequest;
+  const { url, urls, userId, folderId, tags } = req.body as SaveLinksRequest;
 
   // Check if we have at least one URL to process
-  if (!urls || !userId) {
+  if ((!url && !urls) || !userId) {
     return res.status(400).json({ error: "Missing URL(s) or userId" });
   }
 
   // Handle both single URL and array of URLs
-  const urlsToProcess = urls || [];
+  const urlsToProcess = urls || (url ? [url] : []);
 
   if (urlsToProcess.length === 0) {
     return res.status(400).json({ error: "No valid URLs provided" });
@@ -121,6 +121,8 @@ export default async function handler(
         description: "",
         image: "",
         createdAt: new Date().toISOString(),
+        // Add tags if provided
+        tags: tags || [],
       };
 
       try {
@@ -146,6 +148,8 @@ export default async function handler(
           url: currentUrl, // Ensure URL field is present
           title: result.ogTitle || currentUrl, // Use OG title or fallback to URL
           createdAt: new Date().toISOString(),
+          // Add tags if provided
+          tags: tags || [],
         };
 
         const savedLink = await saveLinkToDatabase(

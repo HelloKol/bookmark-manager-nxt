@@ -1,7 +1,7 @@
 import React from "react";
 import Header from "@/components/Header";
 import BookmarkList from "@/components/BookmarkList";
-import { useFetchAllBookmarks } from "@/hooks/data/useFetchAllBookmarks";
+import { useFetchAllBookmarks } from "@/hooks/queries/useFetchAllBookmarks";
 
 export default function AllBookmarks() {
   const { data: bookmarks, isPending, error } = useFetchAllBookmarks();

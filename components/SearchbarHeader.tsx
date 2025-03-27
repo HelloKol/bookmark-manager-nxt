@@ -41,6 +41,7 @@ const SearchbarHeader: React.FC = () => {
 
       {/* Search Modal */}
       <Dialog open={isSearchModalOpen} onOpenChange={setIsSearchModalOpen}>
+        {/* @ts-expect-error - hideCloseButton is not a valid prop */}
         <DialogContent className="sm:max-w-[525px] p-0" hideCloseButton={true}>
           <SearchInput placeholder="Search bookmarks" type="search" autoFocus />
         </DialogContent>

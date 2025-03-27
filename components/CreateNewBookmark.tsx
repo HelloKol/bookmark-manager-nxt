@@ -12,6 +12,7 @@ import { Plus } from "lucide-react";
 import { Input } from "./ui/input";
 import { useAppContext } from "@/context/AppProvider";
 import { useBookmarkCreation } from "@/hooks/useBookmarkCreation";
+import { TagList } from "./ui/Tag";
 
 interface FolderType {
   id: string;
@@ -30,13 +31,34 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
 }) => {
   const { user } = useAppContext();
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(
+    folderId || null
+  );
 
   // Use the custom hook for bookmark creation
-  const { textAreaValue, handleUrlsChange, handleCreateBookmark, isCreating } =
-    useBookmarkCreation();
+  const {
+    textAreaValue,
+    handleUrlsChange,
+    handleCreateBookmark,
+    isCreating,
+    tags,
+    addTag,
+    removeTag,
+    handleTagInputKeyDown,
+    tagInputValue,
+    setTagInputValue,
+  } = useBookmarkCreation();
 
   const handleCloseModal = () => {
     setIsSearchModalOpen(false);
+    setSelectedFolder(folderId || null);
+  };
+
+  const handleSubmit = () => {
+    if (user) {
+      handleCreateBookmark(user.uid, selectedFolder);
+      handleCloseModal();
+    }
   };
 
   return (
@@ -47,7 +69,7 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
       </Button>
 
       {/* Create Modal */}
-      <Dialog open={isSearchModalOpen} onOpenChange={handleCloseModal}>
+      <Dialog open={isSearchModalOpen} onOpenChange={setIsSearchModalOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add new bookmarks</DialogTitle>
@@ -59,29 +81,46 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
             placeholder="Paste URLs here, one per line"
           />
 
-          <div className="flex flex-col space-y-1">
-            <label htmlFor="tags" className="text-sm">
-              Tags (comma-separated)
+          {/* Tags Input */}
+          <div className="flex flex-col space-y-2">
+            <label htmlFor="tags" className="text-sm font-medium">
+              Tags
             </label>
-            <Input
-              id="tags"
-              type="text"
-              placeholder="e.g., work, entertainment"
-              // onChange={(e) =>
-              //   setTags(e.target.value.split(",").map((tag) => tag.trim()))
-              // }
-            />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Input
+                  id="tags"
+                  type="text"
+                  placeholder="Type a tag and press Enter"
+                  value={tagInputValue}
+                  onChange={(e) => setTagInputValue(e.target.value)}
+                  onKeyDown={handleTagInputKeyDown}
+                />
+                <Button
+                  type="button"
+                  onClick={() => addTag(tagInputValue)}
+                  disabled={!tagInputValue.trim()}
+                  size="sm"
+                >
+                  Add
+                </Button>
+              </div>
+
+              {/* Display added tags */}
+              <TagList tags={tags} onRemove={removeTag} className="mt-2" />
+            </div>
           </div>
 
           {/* Folder Select */}
           <div className="flex flex-col space-y-1">
-            <label htmlFor="folderId" className="text-sm">
+            <label htmlFor="folderId" className="text-sm font-medium">
               Folder
             </label>
             {folders && (
               <select
                 id="folderId"
-                // {...register("folderId")}
+                value={selectedFolder || ""}
+                onChange={(e) => setSelectedFolder(e.target.value || null)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="">Select a folder (optional)</option>
@@ -100,11 +139,8 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
             </Button>
             <Button
               type="button"
-              disabled={isCreating}
-              onClick={() => {
-                handleCreateBookmark(user?.uid ?? "", folderId || null);
-                handleCloseModal();
-              }}
+              disabled={isCreating || !textAreaValue.trim()}
+              onClick={handleSubmit}
             >
               {isCreating ? "Saving..." : "Save"}
             </Button>

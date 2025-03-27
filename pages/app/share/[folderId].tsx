@@ -31,6 +31,7 @@ const ShareFolder = ({ folderId }: { folderId: string }) => {
 
           setFolder({
             ...folderData,
+            // @ts-expect-error - links is not typed
             links: linksArray, // Save links as an array
           });
         } else {
@@ -53,6 +54,7 @@ const ShareFolder = ({ folderId }: { folderId: string }) => {
         {folder?.links &&
           folder.links.map((link, index) => (
             <li key={index}>
+              {/* @ts-expect-error - links is not typed */}
               <a href={link.ogUrl}>{link.ogUrl}</a>
             </li>
           ))}

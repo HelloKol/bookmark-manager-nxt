@@ -1,17 +1,31 @@
-import React from "react";
-import { doc, setDoc, getDoc } from "firebase/firestore";
-import BookmarkPreviewBasic from "@/components/BookmarkPreviews/BookmarkPreviewBasic";
-import BookmarkPreviewCompact from "@/components/BookmarkPreviews/BookmarkPreviewCompact";
-import BookmarkPreviewDetailed from "@/components/BookmarkPreviews/BookmarkPreviewDetailed";
-import PreviewCardToggle from "@/components/PreviewCardToggle";
+import React, { useState } from "react";
+import {
+  DropdownMenuRoot,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+
+import { useForm } from "react-hook-form";
+import * as yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { useQueryClient } from "@tanstack/react-query";
 import { db } from "@/lib/firebase";
-import ViewBasic from "@/components/svg/ViewBasic";
-import ViewCompact from "@/components/svg/ViewCompact";
-import ViewDetailed from "@/components/svg/ViewDetailed";
-import { useAppContext } from "@/context/AppProvider";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useFetchFoldersWithLinks } from "@/hooks/queries/useFetchFolders";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { useAppContext } from "@/context/AppProvider";
+import { useFetchFoldersList } from "@/hooks/queries/useFetchFolders";
 
 interface Preview {
   favicon?: string;
@@ -20,78 +34,39 @@ interface Preview {
   ogDescription?: string;
   requestUrl: string;
   ogUrl: string;
-  id?: string;
 }
 
-interface User {
-  uid: string;
-  email: string | null;
-  firstName?: string;
-  lastName?: string;
+interface EditBookmarkProps {
+  preview: Preview;
 }
 
-interface Props {
-  user: User | null;
-  folderId: string;
-}
+const schema = yup.object().shape({
+  url: yup.string().url("Must be a valid URL").required("URL is required"),
+  folderId: yup.string().required(),
+});
 
-const modernMacOSTagColors = [
-  "#FF665E", // Red
-  "#FFA000", // Orange
-  "#FFE000", // Yellow
-  "#00F449", // Green
-  "#00AFFF", // Blue
-  "#FF7FFF", // Purple
-  "#ACA8AC", // Gray
-];
-
-const getRandomModernMacOSTagColor = () => {
-  return modernMacOSTagColors[
-    Math.floor(Math.random() * modernMacOSTagColors.length)
-  ];
-};
-
-/**
- * Fetches links for a specific folder
- */
-const fetchLinks = async (
-  userId: string | undefined,
-  folderId: string
-): Promise<Preview[]> => {
-  if (!userId || !folderId) {
-    return [];
-  }
-
-  const folderDocRef = doc(db, "users", userId, "data", "folders");
-  const snapshot = await getDoc(folderDocRef);
-
-  if (!snapshot.exists()) {
-    return [];
-  }
-
-  const foldersData = snapshot.data();
-  const folderData = foldersData[folderId];
-
-  if (!folderData || !folderData.links) {
-    return [];
-  }
-
-  return Object.values(folderData.links);
-};
-
-export default function Bookmarks({ user, folderId }: Props) {
-  const { searchTerm } = useAppContext();
+const EditBookmark: React.FC<EditBookmarkProps> = ({ preview }) => {
   const queryClient = useQueryClient();
+  const { user } = useAppContext();
+  const [isDialogOpen, setDialogOpen] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
 
-  // Fetch links for the current folder
-  const linksQuery = useQuery({
-    queryKey: ["links", user?.uid, folderId],
-    queryFn: () => fetchLinks(user?.uid, folderId),
-    enabled: !!user?.uid && !!folderId,
+  // Use the basic folders list hook since we don't need links
+  const { data: folders = [] } = useFetchFoldersList();
+
+  const folderId = "123";
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      url: preview?.requestUrl,
+      // folderId: currentFolderId || "",
+    },
   });
-
-  // Use the detailed folders hook since we need links data for operations
-  const foldersQuery = useFetchFoldersWithLinks();
 
   // Mutation for deleting a link
   const deleteMutation = useMutation({
@@ -310,121 +285,165 @@ export default function Bookmarks({ user, folderId }: Props) {
     },
   });
 
-  // Handler for deleting a link
-  const handleDelete = (linkRequestUrl: string) => {
-    deleteMutation.mutate(linkRequestUrl);
+  const handleOpenDialog = () => {
+    setDialogOpen(true);
   };
 
-  // Handler for editing a link
-  const handleEdit = (
-    oldLink: Preview,
-    newRequestUrl: string,
-    newFolderId: string,
-    newTags: string[] = []
-  ) => {
-    editMutation.mutate({ oldLink, newRequestUrl, newFolderId, newTags });
+  const handleDelete = () => {
+    deleteMutation.mutate(preview.requestUrl);
   };
 
-  // Filter links based on searchTerm
-  const links = linksQuery.data || [];
-  const filteredLinks = links.filter((link) => {
-    if (!searchTerm) return true;
+  const onSubmit = (data: { url: string; folderId: string }) => {
+    editMutation.mutate({
+      oldLink: preview,
+      newRequestUrl: data.url,
+      newFolderId: data.folderId,
+      newTags: tags,
+    });
+    setDialogOpen(false);
+  };
 
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      link.ogTitle?.toLowerCase().includes(searchLower) ||
-      link.ogDescription?.toLowerCase().includes(searchLower) ||
-      link.requestUrl.toLowerCase().includes(searchLower)
-    );
-  });
+  return (
+    <>
+      {/* Dropdown Menu */}
+      <DropdownMenuRoot>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon">
+            <MoreVertical className="h-5 w-5" />
+            <span className="sr-only">Open menu</span>
+          </Button>
+        </DropdownMenuTrigger>
 
-  const tabs = [
-    {
-      value: "tab1",
-      label: "Basic",
-      icon: <ViewBasic className="w-10 h-10 fill-black" />,
-      content: (
-        <>
-          {linksQuery.isPending || linksQuery.isLoading ? (
-            <p>Loading links...</p>
-          ) : linksQuery.isError ? (
-            <p>Error loading links: {(linksQuery.error as Error).message}</p>
-          ) : filteredLinks.length > 0 ? (
-            <div className="saved-links">
-              {filteredLinks.map((link, index) => (
-                <BookmarkPreviewBasic
-                  key={index}
-                  preview={link}
-                  currentFolderId={folderId}
-                  folders={foldersQuery.data || []}
-                  onDelete={handleDelete}
-                  onEdit={handleEdit}
-                />
-              ))}
-            </div>
-          ) : (
-            <p>No links in this folder</p>
-          )}
-        </>
-      ),
-    },
-    {
-      value: "tab2",
-      label: "Compact",
-      icon: <ViewCompact className="w-6 h-6 fill-black" />,
-      content: (
-        <>
-          {linksQuery.isPending || linksQuery.isLoading ? (
-            <p>Loading links...</p>
-          ) : linksQuery.isError ? (
-            <p>Error loading links: {(linksQuery.error as Error).message}</p>
-          ) : filteredLinks.length > 0 ? (
-            <div className="saved-links">
-              {filteredLinks.map((link, index) => (
-                <BookmarkPreviewCompact key={index} preview={link} />
-              ))}
-            </div>
-          ) : (
-            <p>No links in this folder</p>
-          )}
-        </>
-      ),
-    },
-    {
-      value: "tab3",
-      label: "Detailed",
-      icon: <ViewDetailed className="w-6 h-6 fill-black" />,
-      content: (
-        <>
-          {linksQuery.isPending || linksQuery.isLoading ? (
-            <p>Loading links...</p>
-          ) : linksQuery.isError ? (
-            <p>Error loading links: {(linksQuery.error as Error).message}</p>
-          ) : filteredLinks.length > 0 ? (
-            <div className="saved-links grid grid-cols-12 gap-4">
-              {filteredLinks.map((link, index) => (
-                <div
-                  key={link.id}
-                  className="col-span-13 lg:col-span-6 xl:col-span-4 mb-5 lg:mb-8"
-                >
-                  <BookmarkPreviewDetailed key={index} preview={link} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p>No links in this folder</p>
-          )}
-        </>
-      ),
-    },
-  ];
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={handleOpenDialog}>
+            <span>Edit</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <span>Favorite</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={handleDelete} className="text-red-500">
+            <span>Delete</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenuRoot>
 
-  return <PreviewCardToggle tabs={tabs} ariaLabel="View bookmarks" />;
-}
+      {/* Edit Bookmark */}
+      <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle>Edit Bookmark</DialogTitle>
+          </DialogHeader>
+
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="flex flex-col space-y-4"
+          >
+            <div className="flex flex-col space-y-1">
+              <label htmlFor="url" className="text-sm">
+                URL
+              </label>
+              <Input
+                id="url"
+                type="text"
+                placeholder="Enter URL"
+                {...register("url")}
+              />
+              {errors.url && (
+                <p className="text-sm text-red-500">{errors.url.message}</p>
+              )}
+            </div>
+
+            <div className="flex flex-col space-y-1">
+              <label htmlFor="tags" className="text-sm">
+                Tags (comma-separated)
+              </label>
+              <Input
+                id="tags"
+                type="text"
+                placeholder="e.g., work, entertainment"
+                onChange={(e) =>
+                  setTags(e.target.value.split(",").map((tag) => tag.trim()))
+                }
+              />
+            </div>
+
+            {/* <div className="flex flex-wrap gap-2">
+              {preview.tags &&
+                Object.keys(preview.tags).map((tagId) => (
+                  <span
+                    key={tagId}
+                    className="bg-gray-200 px-2 py-1 rounded-md text-sm"
+                  >
+                    {tagId}
+                  </span>
+                ))}
+            </div> */}
+
+            {/* Folder Select */}
+            <div className="flex flex-col space-y-1">
+              <label htmlFor="folderId" className="text-sm">
+                Folder
+              </label>
+              <select
+                id="folderId"
+                {...register("folderId")}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">Select a folder (optional)</option>
+                {folders.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </option>
+                ))}
+              </select>
+              {errors.folderId && (
+                <p className="text-sm text-red-500">
+                  {errors.folderId.message}
+                </p>
+              )}
+            </div>
+
+            <DialogFooter className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
+export default EditBookmark;
 
 // Helper function to generate a unique ID
 function generateUniqueId() {
   const timestamp = Date.now().toString(36);
   const randomStr = Math.random().toString(36).substring(2, 8);
   return `${timestamp}-${randomStr}`;
+}
+
+// Helper function to get a random modern macOS tag color
+function getRandomModernMacOSTagColor() {
+  const colors = [
+    "#007AFF",
+    "#FF2D55",
+    "#FF9500",
+    "#FF3B30",
+    "#FF6B00",
+    "#FF9E00",
+    "#FFC700",
+    "#FFD700",
+    "#FFE600",
+    "#FFEC8B",
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
 }

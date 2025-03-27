@@ -60,7 +60,7 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
   onEdit,
 }) => {
   const [isDialogOpen, setDialogOpen] = useState(false);
-  const [tags, setTags] = useState<string[]>([]);
+  // const [tags, setTags] = useState<string[]>([]);
 
   const {
     register,
@@ -88,7 +88,7 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
   };
 
   const onSubmit = (data: { url: string; folderId: string }) => {
-    onEdit(preview, data.url, data.folderId, tags);
+    onEdit(preview, data.url, data.folderId);
     setDialogOpen(false);
   };
 
@@ -154,7 +154,7 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
               )}
             </div>
 
-            <div className="flex flex-col space-y-1">
+            {/* <div className="flex flex-col space-y-1">
               <label htmlFor="tags" className="text-sm">
                 Tags (comma-separated)
               </label>
@@ -166,9 +166,9 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
                   setTags(e.target.value.split(",").map((tag) => tag.trim()))
                 }
               />
-            </div>
+            </div> */}
 
-            <div className="flex flex-wrap gap-2">
+            {/* <div className="flex flex-wrap gap-2">
               {preview.tags &&
                 Object.keys(preview.tags).map((tagId) => (
                   <span
@@ -178,7 +178,7 @@ const LinkPreviewBasic: React.FC<LinkPreviewBasicProps> = ({
                     {tagId}
                   </span>
                 ))}
-            </div>
+            </div> */}
 
             {/* Folder Select */}
             <div className="flex flex-col space-y-1">

@@ -1,7 +1,7 @@
 import React from "react";
 import Header from "@/components/Header";
 import BookmarkList from "@/components/BookmarkList";
-import { useFetchUncategorisedBookmarks } from "@/hooks/data/useFetchUncategorisedBookmarks";
+import { useFetchUncategorisedBookmarks } from "@/hooks/queries/useFetchUncategorisedBookmarks";
 
 export default function UncategorisedBookmarks() {
   const {

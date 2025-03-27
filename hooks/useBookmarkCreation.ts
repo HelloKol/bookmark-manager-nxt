@@ -5,12 +5,18 @@ import api from "@/lib/api";
 interface BookmarkCreationHookResult {
   urls: string[];
   textAreaValue: string;
+  tags: string[];
   handleUrlsChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   handleCreateBookmark: (
     userId: string,
     folderId: string | null
   ) => Promise<boolean>;
   isCreating: boolean;
+  addTag: (tag: string) => void;
+  removeTag: (index: number) => void;
+  handleTagInputKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  tagInputValue: string;
+  setTagInputValue: (value: string) => void;
 }
 
 /**
@@ -22,6 +28,8 @@ export function useBookmarkCreation(): BookmarkCreationHookResult {
   const [urls, setUrls] = useState<string[]>([]);
   const [textAreaValue, setTextAreaValue] = useState<string>("");
   const [isCreating, setIsCreating] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInputValue, setTagInputValue] = useState<string>("");
 
   // Handle change in textarea (split URLs by newline)
   const handleUrlsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -33,6 +41,27 @@ export function useBookmarkCreation(): BookmarkCreationHookResult {
       .map((url) => url.trim())
       .filter((url) => url); // Filter out empty URLs
     setUrls(urlsArray);
+  };
+
+  // Add a tag to the list
+  const addTag = (tag: string) => {
+    // Skip if tag is empty or already exists
+    if (!tag.trim() || tags.includes(tag.trim())) return;
+    setTags([...tags, tag.trim()]);
+    setTagInputValue(""); // Clear input after adding
+  };
+
+  // Remove a tag from the list
+  const removeTag = (index: number) => {
+    setTags(tags.filter((_, i) => i !== index));
+  };
+
+  // Handle keydown event for tag input
+  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && tagInputValue.trim()) {
+      e.preventDefault(); // Prevent form submission
+      addTag(tagInputValue);
+    }
   };
 
   // Handle bookmark creation
@@ -56,6 +85,7 @@ export function useBookmarkCreation(): BookmarkCreationHookResult {
             urls: cleanUrls,
             userId,
             folderId,
+            tags: tags.length > 0 ? tags : undefined, // Only include tags if there are any
           });
 
           resolve();
@@ -89,6 +119,8 @@ export function useBookmarkCreation(): BookmarkCreationHookResult {
     if (success) {
       setTextAreaValue("");
       setUrls([]);
+      setTags([]);
+      setTagInputValue("");
     }
 
     return success;
@@ -97,8 +129,14 @@ export function useBookmarkCreation(): BookmarkCreationHookResult {
   return {
     urls,
     textAreaValue,
+    tags,
     handleUrlsChange,
     handleCreateBookmark,
     isCreating,
+    addTag,
+    removeTag,
+    handleTagInputKeyDown,
+    tagInputValue,
+    setTagInputValue,
   };
 }

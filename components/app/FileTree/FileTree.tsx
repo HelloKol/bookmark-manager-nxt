@@ -1,15 +1,32 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
-import { Folder } from "@/types";
-import { useFetchFoldersWithLinks } from "@/hooks/data/useFetchFolders";
+import { useFetchFoldersWithLinks } from "@/hooks/queries/useFetchFolders";
 import { SidebarGroupLabel } from "../Sidebar/sidebar";
 import CreateNewFolder from "@/components/CreateNewFolder";
 import { Button } from "@/components/ui/button";
 
-type FolderItem = Folder;
+// A custom type for our tree items
+interface TreeBookmark {
+  id: string;
+  url: string;
+  requestUrl: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  createdAt: string;
+  type: "bookmark";
+  [key: string]: string | number | boolean | object | undefined | null;
+}
 
-type FileTreeItem = FolderItem;
+interface TreeFolder {
+  id: string;
+  name: string;
+  slug: string;
+  links: Record<string, TreeBookmark> | null;
+  type: "folder";
+}
+
+type FileTreeItem = TreeFolder | TreeBookmark;
 
 type FileTreeProps = {
   className?: string;
@@ -40,6 +57,40 @@ export default function FileTree({ className = "" }: FileTreeProps) {
     );
   }
 
+  // Convert folders to our tree format using type assertions
+  // This is safer than trying to match exact types from external definitions
+  const treeItems: FileTreeItem[] =
+    folders?.map(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (folder: any) => {
+        const treeFolder: TreeFolder = {
+          id: folder.id,
+          name: folder.name,
+          slug: folder.slug,
+          links: folder.links
+            ? // Convert each link to our TreeBookmark format
+              Object.entries(folder.links).reduce(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (acc, [key, linkData]: [string, any]) => {
+                  acc[key] = {
+                    ...linkData,
+                    id: key,
+                    url: linkData.url || "",
+                    requestUrl: linkData.requestUrl || "",
+                    createdAt: linkData.createdAt || new Date().toISOString(),
+                    type: "bookmark" as const,
+                  };
+                  return acc;
+                },
+                {} as Record<string, TreeBookmark>
+              )
+            : null,
+          type: "folder" as const,
+        };
+        return treeFolder;
+      }
+    ) || [];
+
   return (
     <>
       <SidebarGroupLabel className="flex justify-between">
@@ -54,10 +105,9 @@ export default function FileTree({ className = "" }: FileTreeProps) {
       </SidebarGroupLabel>
       <div className={`w-full max-w-md ${className}`}>
         <ul className="space-y-1">
-          {folders &&
-            folders.map((item, index) => (
-              <FileTreeNode key={index} item={item} />
-            ))}
+          {treeItems.map((item, index) => (
+            <FileTreeNode key={index} item={item} />
+          ))}
         </ul>
       </div>
     </>
@@ -94,6 +144,10 @@ function FileTreeNode({ item }: FileTreeNodeProps) {
     );
   }
 
+  // At this point TypeScript knows that item is a TreeFolder
+  const hasLinks =
+    item.links !== null && Object.keys(item.links || {}).length > 0;
+
   return (
     <li>
       <Link
@@ -107,7 +161,7 @@ function FileTreeNode({ item }: FileTreeNodeProps) {
             setIsOpen(!isOpen);
           }}
           className="relative z-10 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={item?.links && Object.keys(item?.links).length === 0}
+          disabled={!hasLinks}
         >
           <ChevronRight
             className="h-4 w-4 text-muted-foreground transition-transform duration-200"
@@ -117,7 +171,7 @@ function FileTreeNode({ item }: FileTreeNodeProps) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/static/macos-folder.png"
-          alt="Vercel Logo"
+          alt="Folder icon"
           className="block w-5 cursor-pointer"
         />
         <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis">
@@ -125,7 +179,7 @@ function FileTreeNode({ item }: FileTreeNodeProps) {
         </span>
 
         <p className="ml-auto text-sm text-muted-foreground">
-          {item?.links && Object.keys(item?.links).length}
+          {item.links ? Object.keys(item.links).length : 0}
         </p>
       </Link>
 
@@ -135,18 +189,11 @@ function FileTreeNode({ item }: FileTreeNodeProps) {
         style={{ height: height !== undefined ? `${height}px` : undefined }}
       >
         <ul className="border-l border-muted pl-4 ml-4 mt-1 space-y-1 py-1">
-          {item?.links &&
-            Object.keys(item.links).map((key, index) => {
-              return (
-                <FileTreeNode
-                  key={index}
-                  item={{
-                    ...item.links[key],
-                    type: "bookmark",
-                  }}
-                />
-              );
-            })}
+          {item.links &&
+            hasLinks &&
+            Object.entries(item.links).map(([key, linkData]) => (
+              <FileTreeNode key={key} item={linkData} />
+            ))}
         </ul>
       </div>
     </li>

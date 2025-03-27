@@ -1,6 +1,6 @@
 import React from "react";
 import CreateNewBookmark from "./CreateNewBookmark";
-import { useFetchFoldersList } from "@/hooks/data/useFetchFolders";
+import { useFetchFoldersList } from "@/hooks/queries/useFetchFolders";
 
 export default function Header({ bookmarkLength }: { bookmarkLength: number }) {
   // Use the basic folders list hook since we don't need links
