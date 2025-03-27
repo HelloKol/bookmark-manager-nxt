@@ -5,6 +5,7 @@ import { Textarea } from "./ui/textarea";
 import { Separator } from "./app/Sidebar/separator";
 import BookmarkPreviewDetailed from "./BookmarkPreviews/BookmarkPreviewDetailed";
 import { Bookmark } from "@/types";
+import { toast } from "react-toastify";
 
 interface BookmarkListProps {
   bookmarks: Bookmark[];
@@ -17,21 +18,77 @@ export default function BookmarkList({
   isLoading,
   error,
 }: BookmarkListProps) {
-  const { searchTerm } = useAppContext();
+  const { searchTerm, user } = useAppContext();
+  const [urls, setUrls] = useState<string[]>([]);
   const [textAreaValue, setTextAreaValue] = useState<string>("");
 
   // Handle change in textarea (split URLs by newline)
   const handleUrlsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setTextAreaValue(value);
+
+    const urlsArray = value
+      .split("\n") // Split by new lines
+      .map((url) => url.trim())
+      .filter((url) => url); // Filter out empty URLs
+    setUrls(urlsArray);
   };
 
-  // Handle keydown event to detect Enter or Shift + Enter
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      // If Shift is not held, we prevent the default action to avoid new line and fetch metadata
-      e.preventDefault();
-      // handleCreateBookmark();
+  const handleCreateBookmark = async () => {
+    if (urls.length === 0) return;
+    if (!user) return;
+
+    // Wrap the entire operation in a promise
+    const createBookmarksPromise = new Promise<void>(
+      async (resolve, reject) => {
+        try {
+          // Instead of multiple API calls, send all URLs in a single request
+          const cleanUrls = urls.map((url) => url.replace(/\/$/, ""));
+
+          console.log("Saving URLs:", cleanUrls);
+
+          const res = await fetch("/api/saveLinks", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              urls: cleanUrls, // Send array of URLs instead of single URL
+              userId: user.uid,
+              folderId: null, // Pass null if folderId is not provided
+            }),
+          });
+
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || "Failed to save links");
+          }
+
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      }
+    );
+
+    // Use toast.promise to handle loading, success, and error states
+    toast.promise(createBookmarksPromise, {
+      pending: "Saving bookmarks...",
+      success: {
+        render: "Bookmarks saved successfully!",
+      },
+      error: {
+        render: ({ data }) =>
+          `Error saving bookmarks: ${
+            data instanceof Error ? data.message : "Unknown error"
+          }`,
+      },
+    });
+
+    // Clear textarea after submission
+    if (await createBookmarksPromise.then(() => true).catch(() => false)) {
+      setTextAreaValue("");
+      setUrls([]);
     }
   };
 
@@ -45,7 +102,6 @@ export default function BookmarkList({
     );
   });
 
-  if (isLoading) return <p>Loading bookmarks...</p>;
   if (error) return <p>Error: {error.message}</p>;
 
   return (
@@ -57,7 +113,6 @@ export default function BookmarkList({
           <Textarea
             value={textAreaValue}
             onChange={handleUrlsChange}
-            onKeyDown={handleKeyDown}
             placeholder="Paste URLs here, one per line"
             variant="large"
           />
@@ -65,25 +120,37 @@ export default function BookmarkList({
             type="button"
             className="w-full mt-2"
             disabled={!textAreaValue}
+            onClick={handleCreateBookmark}
           >
             Create
           </Button>
         </div>
 
-        {filteredBookmarks.map((bookmark) => (
-          <div
-            key={bookmark.id}
-            className="col-span-13 lg:col-span-6 xl:col-span-4 mb-5 lg:mb-8"
-          >
-            <BookmarkPreviewDetailed
-              preview={{
-                ...bookmark,
-                requestUrl: bookmark.url,
-                ogUrl: bookmark.url,
-              }}
-            />
-          </div>
-        ))}
+        {isLoading ? (
+          <>
+            {Array.from({ length: 10 }).map((_, index) => (
+              <div
+                key={index}
+                className="col-span-13 lg:col-span-6 xl:col-span-4 mb-5 lg:mb-8 bg-gray-200 rounded animate-pulse w-full h-full min-h-[300px]"
+              ></div>
+            ))}
+          </>
+        ) : (
+          filteredBookmarks.map((bookmark) => (
+            <div
+              key={bookmark.id}
+              className="col-span-13 lg:col-span-6 xl:col-span-4 mb-5 lg:mb-8 rounded overflow-hidden"
+            >
+              <BookmarkPreviewDetailed
+                preview={{
+                  ...bookmark,
+                  requestUrl: bookmark.url,
+                  ogUrl: bookmark.url,
+                }}
+              />
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

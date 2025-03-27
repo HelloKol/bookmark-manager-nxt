@@ -34,12 +34,7 @@ const BookmarkPreviewDetailed: React.FC<BookmarkPreviewDetailedProps> = ({
     : "/static/placeholder-600x400.png";
 
   return (
-    <Link
-      href={preview.requestUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="rounded-lg"
-    >
+    <Link href={preview.requestUrl} target="_blank" rel="noopener noreferrer">
       <div className="h-[300px] relative overflow-hidden mb-5">
         <Image
           src={preview?.ogImage?.[0]?.url || "/static/placeholder-600x400.png"}

@@ -1,34 +1,66 @@
 import { useState, useRef, useEffect } from "react";
-import { File, Folder, ChevronRight } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
+import { Folder } from "@/types";
+import { useFetchFoldersWithLinks } from "@/hooks/data/useFetchFolders";
+import { SidebarGroupLabel } from "../Sidebar/sidebar";
+import CreateNewFolder from "@/components/CreateNewFolder";
+import { Button } from "@/components/ui/button";
 
-type FileItem = {
-  name: string;
-  type: "file";
-};
+type FolderItem = Folder;
 
-type FolderItem = {
-  name: string;
-  type: "folder";
-  children: (FileItem | FolderItem)[];
-};
-
-type FileTreeItem = FileItem | FolderItem;
+type FileTreeItem = FolderItem;
 
 type FileTreeProps = {
-  items: FileTreeItem[];
   className?: string;
 };
 
-export default function FileTree({ items, className = "" }: FileTreeProps) {
-  return (
-    <div className={`w-full max-w-md ${className}`}>
-      <ul className="space-y-1">
-        {items.map((item, index) => (
-          <FileTreeNode key={index} item={item} />
+export default function FileTree({ className = "" }: FileTreeProps) {
+  const { data: folders, isPending, error } = useFetchFoldersWithLinks();
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+
+  if (isPending) {
+    return (
+      <SidebarGroupLabel className="block mt-4">
+        {Array.from({ length: 30 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-8 bg-gray-200 rounded mb-4 animate-pulse w-full"
+          ></div>
         ))}
-      </ul>
-    </div>
+      </SidebarGroupLabel>
+    );
+  }
+
+  if (error) {
+    return (
+      <SidebarGroupLabel className="flex justify-between">
+        <p className="text-base">Error loading folders</p>
+      </SidebarGroupLabel>
+    );
+  }
+
+  return (
+    <>
+      <SidebarGroupLabel className="flex justify-between">
+        <p className="text-base">{folders?.length} Collections</p>
+        <Button variant={"ghost"} onClick={() => setIsFolderModalOpen(true)}>
+          <Plus className="h-6 w-6" />
+        </Button>
+        <CreateNewFolder
+          isFolderModalOpen={isFolderModalOpen}
+          setIsFolderModalOpen={setIsFolderModalOpen}
+        />
+      </SidebarGroupLabel>
+      <div className={`w-full max-w-md ${className}`}>
+        <ul className="space-y-1">
+          {folders &&
+            folders.map((item, index) => (
+              <FileTreeNode key={index} item={item} />
+            ))}
+        </ul>
+      </div>
+    </>
   );
 }
 
@@ -74,7 +106,8 @@ function FileTreeNode({ item }: FileTreeNodeProps) {
             e.stopPropagation();
             setIsOpen(!isOpen);
           }}
-          className="relative z-10"
+          className="relative z-10 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={item?.links && Object.keys(item?.links).length === 0}
         >
           <ChevronRight
             className="h-4 w-4 text-muted-foreground transition-transform duration-200"
@@ -103,7 +136,7 @@ function FileTreeNode({ item }: FileTreeNodeProps) {
       >
         <ul className="border-l border-muted pl-4 ml-4 mt-1 space-y-1 py-1">
           {item?.links &&
-            Object.keys(item.links as FolderItem).map((key, index) => {
+            Object.keys(item.links).map((key, index) => {
               return (
                 <FileTreeNode
                   key={index}

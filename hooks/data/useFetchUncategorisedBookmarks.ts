@@ -47,7 +47,5 @@ export const useFetchUncategorisedBookmarks = () => {
     queryKey: ["uncategorizedBookmarks", user?.uid],
     queryFn: () => (user?.uid ? fetchBookmarks(user.uid) : Promise.resolve([])),
     enabled: !!user?.uid,
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
-    retry: false, // Disable automatic retries on error
   });
 };

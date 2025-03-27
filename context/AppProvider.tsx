@@ -29,8 +29,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     "loading" | "error" | "success"
   >("loading");
 
-  console.log("user", user);
-
   useEffect(() => {
     setIsUserLoading("loading");
 

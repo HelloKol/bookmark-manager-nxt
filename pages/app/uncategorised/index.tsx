@@ -6,7 +6,7 @@ import { useFetchUncategorisedBookmarks } from "@/hooks/data/useFetchUncategoris
 export default function UncategorisedBookmarks() {
   const {
     data: bookmarks,
-    isLoading,
+    isPending,
     error,
   } = useFetchUncategorisedBookmarks();
   const bookmarkLength = bookmarks?.length || 0;
@@ -16,7 +16,7 @@ export default function UncategorisedBookmarks() {
       <Header bookmarkLength={bookmarkLength} />
       <BookmarkList
         bookmarks={bookmarks || []}
-        isLoading={isLoading}
+        isLoading={isPending}
         error={error}
       />
     </div>

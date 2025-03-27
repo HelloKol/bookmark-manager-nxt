@@ -6,8 +6,17 @@ import "@/styles/globals.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppLayout from "@/components/app/AppLayout";
 
-// Create a client
-const queryClient = new QueryClient();
+// Create a client with better defaults for caching
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnMount: true,
+      refetchOnReconnect: false,
+    },
+  },
+});
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();

@@ -32,12 +32,6 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
   const [textAreaValue, setTextAreaValue] = useState<string>("");
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
-  const handleCloseModal = () => {
-    setUrls([]);
-    setTextAreaValue("");
-    setIsSearchModalOpen(false);
-  };
-
   const handleCreateBookmark = async () => {
     if (urls.length === 0) return;
 
@@ -112,6 +106,12 @@ const CreateNewBookmark: React.FC<CreateNewBookmarkProps> = ({
       handleCloseModal();
       handleCreateBookmark();
     }
+  };
+
+  const handleCloseModal = () => {
+    setUrls([]);
+    setTextAreaValue("");
+    setIsSearchModalOpen(false);
   };
 
   return (

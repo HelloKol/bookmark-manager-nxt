@@ -4,7 +4,7 @@ import BookmarkList from "@/components/BookmarkList";
 import { useFetchAllBookmarks } from "@/hooks/data/useFetchAllBookmarks";
 
 export default function AllBookmarks() {
-  const { data: bookmarks, isLoading, error } = useFetchAllBookmarks();
+  const { data: bookmarks, isPending, error } = useFetchAllBookmarks();
   const bookmarkLength = bookmarks?.length || 0;
 
   return (
@@ -12,7 +12,7 @@ export default function AllBookmarks() {
       <Header bookmarkLength={bookmarkLength} />
       <BookmarkList
         bookmarks={bookmarks || []}
-        isLoading={isLoading}
+        isLoading={isPending}
         error={error}
       />
     </div>

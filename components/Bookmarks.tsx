@@ -11,6 +11,7 @@ import ViewDetailed from "@/components/svg/ViewDetailed";
 import { useAppContext } from "@/context/AppProvider";
 import { toast } from "react-toastify";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useFetchFoldersWithLinks } from "@/hooks/data/useFetchFolders";
 
 interface Preview {
   favicon?: string;
@@ -27,11 +28,6 @@ interface User {
   email: string | null;
   firstName?: string;
   lastName?: string;
-}
-
-interface Folder {
-  id: string;
-  name: string;
 }
 
 interface Props {
@@ -59,7 +55,7 @@ const getRandomModernMacOSTagColor = () => {
  * Fetches links for a specific folder
  */
 const fetchLinks = async (
-  userId: string,
+  userId: string | undefined,
   folderId: string
 ): Promise<Preview[]> => {
   if (!userId || !folderId) {
@@ -83,29 +79,6 @@ const fetchLinks = async (
   return Object.values(folderData.links);
 };
 
-/**
- * Fetches all folders
- */
-const fetchFolders = async (userId: string): Promise<Folder[]> => {
-  if (!userId) {
-    return [];
-  }
-
-  const foldersDocRef = doc(db, "users", userId, "data", "folders");
-  const snapshot = await getDoc(foldersDocRef);
-
-  if (!snapshot.exists()) {
-    return [];
-  }
-
-  const foldersData = snapshot.data();
-
-  return Object.keys(foldersData).map((id) => ({
-    id,
-    ...foldersData[id],
-  }));
-};
-
 export default function Bookmarks({ user, folderId }: Props) {
   const { searchTerm } = useAppContext();
   const queryClient = useQueryClient();
@@ -113,18 +86,12 @@ export default function Bookmarks({ user, folderId }: Props) {
   // Fetch links for the current folder
   const linksQuery = useQuery({
     queryKey: ["links", user?.uid, folderId],
-    queryFn: () => fetchLinks(user?.uid || "", folderId),
+    queryFn: () => fetchLinks(user?.uid, folderId),
     enabled: !!user?.uid && !!folderId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Fetch all folders
-  const foldersQuery = useQuery({
-    queryKey: ["folders", user?.uid],
-    queryFn: () => fetchFolders(user?.uid || ""),
-    enabled: !!user?.uid,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  // Use the detailed folders hook since we need links data for operations
+  const foldersQuery = useFetchFoldersWithLinks();
 
   // Mutation for deleting a link
   const deleteMutation = useMutation({
@@ -177,7 +144,10 @@ export default function Bookmarks({ user, folderId }: Props) {
       queryClient.invalidateQueries({
         queryKey: ["links", user?.uid, folderId],
       });
-      queryClient.invalidateQueries({ queryKey: ["folders", user?.uid] });
+      queryClient.invalidateQueries({ queryKey: ["foldersList", user?.uid] });
+      queryClient.invalidateQueries({
+        queryKey: ["foldersWithLinks", user?.uid],
+      });
     },
     onError: (error) => {
       toast.error(
@@ -327,7 +297,10 @@ export default function Bookmarks({ user, folderId }: Props) {
       queryClient.invalidateQueries({
         queryKey: ["links", user?.uid, folderId],
       });
-      queryClient.invalidateQueries({ queryKey: ["folders", user?.uid] });
+      queryClient.invalidateQueries({ queryKey: ["foldersList", user?.uid] });
+      queryClient.invalidateQueries({
+        queryKey: ["foldersWithLinks", user?.uid],
+      });
       queryClient.invalidateQueries({ queryKey: ["tags"] });
     },
     onError: (error) => {
@@ -372,7 +345,7 @@ export default function Bookmarks({ user, folderId }: Props) {
       icon: <ViewBasic className="w-10 h-10 fill-black" />,
       content: (
         <>
-          {linksQuery.isLoading ? (
+          {linksQuery.isPending || linksQuery.isLoading ? (
             <p>Loading links...</p>
           ) : linksQuery.isError ? (
             <p>Error loading links: {(linksQuery.error as Error).message}</p>
@@ -401,7 +374,7 @@ export default function Bookmarks({ user, folderId }: Props) {
       icon: <ViewCompact className="w-6 h-6 fill-black" />,
       content: (
         <>
-          {linksQuery.isLoading ? (
+          {linksQuery.isPending || linksQuery.isLoading ? (
             <p>Loading links...</p>
           ) : linksQuery.isError ? (
             <p>Error loading links: {(linksQuery.error as Error).message}</p>
@@ -423,7 +396,7 @@ export default function Bookmarks({ user, folderId }: Props) {
       icon: <ViewDetailed className="w-6 h-6 fill-black" />,
       content: (
         <>
-          {linksQuery.isLoading ? (
+          {linksQuery.isPending || linksQuery.isLoading ? (
             <p>Loading links...</p>
           ) : linksQuery.isError ? (
             <p>Error loading links: {(linksQuery.error as Error).message}</p>

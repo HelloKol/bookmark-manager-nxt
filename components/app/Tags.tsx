@@ -17,9 +17,11 @@ interface TagData {
   folders?: Record<string, boolean>;
 }
 
-const fetchTags = async (): Promise<Tag[]> => {
+const fetchTags = async (userId: string | undefined): Promise<Tag[]> => {
+  if (!userId) return [];
+
   try {
-    const tagsDocRef = doc(db, "tags", "data");
+    const tagsDocRef = doc(db, "users", userId, "data", "tags");
     const snapshot = await getDoc(tagsDocRef);
 
     if (!snapshot.exists()) return [];
@@ -51,9 +53,8 @@ export default function Tags() {
     error,
   } = useQuery({
     queryKey: ["tags"],
-    queryFn: fetchTags,
-    enabled: !!user, // Only fetch when user is available
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    queryFn: () => fetchTags(user?.uid),
+    enabled: !!user?.uid, // Only fetch when user is available
   });
 
   if (isLoading) return <div>Loading tags...</div>;

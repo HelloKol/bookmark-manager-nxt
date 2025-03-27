@@ -88,65 +88,84 @@ export default async function handler(
 ) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { url, userId, folderId } = req.body;
+  const { url, urls, userId, folderId } = req.body;
 
-  if (!url || !userId) {
-    return res.status(400).json({ error: "Missing URL or userId" });
+  // Check if we have at least one URL to process
+  if ((!url && !urls) || !userId) {
+    return res.status(400).json({ error: "Missing URL(s) or userId" });
   }
 
-  // Default link data in case Open Graph fails
-  const linkData = {
-    requestUrl: url,
-    url: url, // Add URL field to match Bookmark interface
-    title: url, // Default title is the URL
-    description: "",
-    image: "",
-    createdAt: new Date().toISOString(),
-  };
+  // Handle both single URL and array of URLs
+  const urlsToProcess = urls || (url ? [url] : []);
+
+  if (urlsToProcess.length === 0) {
+    return res.status(400).json({ error: "No valid URLs provided" });
+  }
 
   try {
-    // Fetch Open Graph data
-    const options = { url };
-    const { error, result } = await ogs(options);
+    // Process each URL sequentially to avoid race conditions
+    const savedLinks = [];
 
-    if (error) {
-      console.warn("Open Graph fetch error:", error);
-      const savedLink = await saveLinkToDatabase(
-        userId,
-        folderId || null,
-        linkData
-      );
-      return res.status(200).json(savedLink);
+    for (const currentUrl of urlsToProcess) {
+      // Default link data in case Open Graph fails
+      const linkData = {
+        requestUrl: currentUrl,
+        url: currentUrl, // Add URL field to match Bookmark interface
+        title: currentUrl, // Default title is the URL
+        description: "",
+        image: "",
+        createdAt: new Date().toISOString(),
+      };
+
+      try {
+        // Fetch Open Graph data
+        const options = { url: currentUrl };
+        const { error, result } = await ogs(options);
+
+        if (error) {
+          console.warn("Open Graph fetch error for URL:", currentUrl, error);
+          const savedLink = await saveLinkToDatabase(
+            userId,
+            folderId || null,
+            linkData
+          );
+          savedLinks.push(savedLink);
+          continue;
+        }
+
+        // Prepare the link data with both OG data and required fields
+        const enrichedLinkData = {
+          ...result,
+          requestUrl: currentUrl, // Ensure requestUrl field is present
+          url: currentUrl, // Ensure URL field is present
+          title: result.ogTitle || currentUrl, // Use OG title or fallback to URL
+          createdAt: new Date().toISOString(),
+        };
+
+        const savedLink = await saveLinkToDatabase(
+          userId,
+          folderId || null,
+          enrichedLinkData
+        );
+        savedLinks.push(savedLink);
+      } catch (urlError) {
+        console.error("Error processing URL:", currentUrl, urlError);
+        // Continue with next URL rather than failing completely
+        const savedLink = await saveLinkToDatabase(
+          userId,
+          folderId || null,
+          linkData
+        );
+        savedLinks.push(savedLink);
+      }
     }
 
-    // Prepare the link data with both OG data and required fields
-    const enrichedLinkData = {
-      ...result,
-      requestUrl: url, // Ensure requestUrl field is present
-      url: url, // Ensure URL field is present
-      title: result.ogTitle || url, // Use OG title or fallback to URL
-      createdAt: new Date().toISOString(),
-    };
-
-    const savedLink = await saveLinkToDatabase(
-      userId,
-      folderId || null,
-      enrichedLinkData
-    );
-    return res.status(200).json(savedLink);
+    return res.status(200).json({
+      message: `Successfully processed ${savedLinks.length} URLs`,
+      links: savedLinks,
+    });
   } catch (error) {
-    console.error("Error:", error);
-
-    try {
-      const savedLink = await saveLinkToDatabase(
-        userId,
-        folderId || null,
-        linkData
-      );
-      return res.status(200).json(savedLink);
-    } catch (dbError) {
-      console.error("Database error:", dbError);
-      return res.status(500).json({ error: "Failed to save link" });
-    }
+    console.error("General error:", error);
+    return res.status(500).json({ error: "Failed to save links" });
   }
 }

@@ -1,77 +1,26 @@
 import React from "react";
 import { useRouter } from "next/router";
-import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
 import { useAppContext } from "@/context/AppProvider";
 import Bookmarks from "@/components/Bookmarks";
 import CreateNewBookmark from "@/components/CreateNewBookmark";
 import DeleteAllBookmark from "@/components/DeleteAllBookmark";
 import ImportBookmark from "@/components/ImportBookmark";
-import { useQuery } from "@tanstack/react-query";
-
-interface BookmarkData {
-  requestUrl: string;
-  url: string;
-  title?: string;
-  ogTitle?: string;
-  ogDescription?: string;
-  ogImage?: { url: string }[];
-}
-
-interface FolderData {
-  name: string;
-  slug: string;
-  createdAt: string;
-  links?: Record<string, BookmarkData>;
-}
-
-interface FolderType {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-/**
- * Fetches all folders for a user from Firestore
- */
-const fetchFolders = async (userId: string): Promise<FolderType[]> => {
-  if (!userId) {
-    return [];
-  }
-
-  const foldersDocRef = doc(db, "users", userId, "data", "folders");
-  const snapshot = await getDoc(foldersDocRef);
-
-  if (!snapshot.exists()) {
-    return [];
-  }
-
-  const data = snapshot.data() as Record<string, FolderData>;
-
-  return Object.entries(data).map(([id, value]) => ({
-    id,
-    name: value.name,
-    slug: value.slug,
-  }));
-};
+import { useFetchFoldersList } from "@/hooks/data/useFetchFolders";
 
 const FolderPage: React.FC = () => {
   const router = useRouter();
   const { user } = useAppContext();
   const { slug } = router.query;
 
-  // Fetch all folders with TanStack Query
-  const foldersQuery = useQuery({
-    queryKey: ["folders", user?.uid],
-    queryFn: () => fetchFolders(user?.uid || ""),
-    enabled: !!user?.uid,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  // Use the basic folders list hook since we only need minimal data here
+  const foldersQuery = useFetchFoldersList();
 
   // Find the current folder based on the slug
   const folder = foldersQuery.data?.find((f) => f.slug === slug);
 
-  if (foldersQuery.isLoading) return <p>Loading folder...</p>;
+  // Use isPending to check both initial loading and enabled state changes
+  if (foldersQuery.isPending || foldersQuery.isLoading)
+    return <p>Loading folder...</p>;
   if (foldersQuery.isError)
     return <p>Error loading folder: {(foldersQuery.error as Error).message}</p>;
   if (!folder) return <p>Folder not found</p>;

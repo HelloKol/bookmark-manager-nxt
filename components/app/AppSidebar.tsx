@@ -8,56 +8,31 @@ import {
   SidebarRail,
 } from "@/components/app/Sidebar/sidebar";
 import FileTree from "@/components/app/FileTree/FileTree";
-import { useAppContext } from "@/context/AppProvider";
-import { useFetchFolders } from "@/hooks/data/useFetchFolders";
 import Link from "next/link";
-import { Plus } from "lucide-react";
-import { useState } from "react";
-import CreateNewFolder from "../CreateNewFolder";
-import { Button } from "../ui/button";
+import { Bookmark } from "lucide-react";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, userLoading } = useAppContext();
-  const state = useFetchFolders(user?.uid || null, userLoading);
-  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
-
-  const renderFileTree = () => {
-    if (state.status === "loading" || userLoading === "loading")
-      return <p>Loading folders...</p>;
-    if (state.status === "error") return <p>Error: {state.error}</p>;
-
-    return <FileTree items={state.folders} />;
-  };
-
   return (
     <Sidebar {...props}>
-      <SidebarHeader>LOGO</SidebarHeader>
+      <SidebarHeader>
+        <div className="flex gap-2 items-center text-xl font-bold">
+          <Bookmark className="h-6 w-6" />
+          <span>BookmarkPro</span>
+        </div>
+      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
-            <Link href="/" className="text-sm">
+            <Link href="/" className="text-base">
               View all
             </Link>
           </SidebarGroupLabel>
           <SidebarGroupLabel>
-            <Link href="/uncategorised" className="text-sm">
+            <Link href="/uncategorised" className="text-base">
               Uncategorised
             </Link>
           </SidebarGroupLabel>
-          <SidebarGroupLabel className="flex justify-between">
-            <p className="text-sm">3 Collections</p>
-            <Button
-              variant={"ghost"}
-              onClick={() => setIsFolderModalOpen(true)}
-            >
-              <Plus className="h-6 w-6" />
-            </Button>
-            <CreateNewFolder
-              isFolderModalOpen={isFolderModalOpen}
-              setIsFolderModalOpen={setIsFolderModalOpen}
-            />
-          </SidebarGroupLabel>
-          {renderFileTree()}
+          <FileTree />
         </SidebarGroup>
       </SidebarContent>
       <SidebarRail />

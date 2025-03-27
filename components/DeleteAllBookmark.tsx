@@ -58,8 +58,14 @@ const DeleteAllBookmark: React.FC<DeleteAllBookmarkProps> = ({
     },
     onSuccess: () => {
       // Invalidate relevant queries to refresh the data
-      queryClient.invalidateQueries({ queryKey: ["folders"] });
-      queryClient.invalidateQueries({ queryKey: ["allBookmarks"] });
+      queryClient.invalidateQueries({ queryKey: ["foldersList", user?.uid] });
+      queryClient.invalidateQueries({
+        queryKey: ["foldersWithLinks", user?.uid],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["links", user?.uid, folderId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["allBookmarks", user?.uid] });
       toast.success("All bookmarks removed successfully!");
     },
     onError: (error) => {

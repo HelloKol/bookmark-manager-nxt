@@ -88,7 +88,5 @@ export const useFetchAllBookmarks = () => {
     queryKey: ["allBookmarks", user?.uid],
     queryFn: () => fetchBookmarks(user?.uid || ""),
     enabled: !!user?.uid,
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
-    retry: false, // Disable automatic retries on error
   });
 };
