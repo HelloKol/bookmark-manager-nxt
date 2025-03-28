@@ -12,7 +12,6 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host") || "";
   const subdomain = host.split(".")[0];
 
-  // Session cookie and protected/auth paths
   const sessionCookie = request.cookies.get("session")?.value;
   const authPaths = [
     "/login",
@@ -22,14 +21,23 @@ export async function middleware(request: NextRequest) {
   ];
   const { pathname } = url;
 
-  // URL rewriting based on subdomain
+  // Skip middleware for static files and API routes
+  if (
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/static")
+  ) {
+    return NextResponse.next();
+  }
+
+  // Handle subdomains
   if (subdomain === "app") {
     if (pathname === "/") {
       url.pathname = "/app";
     } else if (!pathname.startsWith("/app")) {
       url.pathname = `/app${pathname}`;
     }
-  } else {
+  } else if (subdomain !== "vercel" && subdomain !== "localhost") {
     if (pathname === "/") {
       url.pathname = "/marketing";
     } else if (!pathname.startsWith("/marketing")) {
@@ -37,12 +45,12 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Skip session verification for non-app subdomains
+  // Skip session check for non-app subdomains
   if (subdomain !== "app") {
     return NextResponse.rewrite(url);
   }
 
-  // Check if session is cached
+  // Check session cache
   let user: UserInfo | null = null;
   if (sessionCookie && sessionCache.has(sessionCookie)) {
     const cachedSession = sessionCache.get(sessionCookie);
@@ -51,44 +59,37 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // If session is not cached, verify it via the API
+  // Verify session if not cached
   if (!user && sessionCookie) {
     const response = await fetch(
       `${request.nextUrl.origin}/api/verify-session`,
       {
-        headers: {
-          Cookie: `session=${sessionCookie}`,
-        },
+        headers: { Cookie: `session=${sessionCookie}` },
       }
     );
 
     if (response.ok) {
       const data = await response.json();
       user = data.user;
-
-      // Cache the session verification result
       sessionCache.set(sessionCookie, { user, timestamp: Date.now() });
     }
   }
 
-  // Redirect logic for authenticated users
+  // Redirect based on authentication status
   if (user) {
-    // If user is logged in and tries to access auth pages, redirect to home
     if (authPaths.includes(pathname)) {
       return NextResponse.redirect(new URL("/", request.url));
     }
   } else {
-    // If user is not logged in and tries to access protected pages, redirect to login
     if (!authPaths.includes(pathname)) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
   }
 
-  // Rewrite the URL for non-protected routes or after authentication checks
   return NextResponse.rewrite(url);
 }
 
-// Exclude static files and Next.js internals from rewriting.
+// Exclude static files, API routes, and PWA assets from rewriting
 export const config = {
   matcher: [
     "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|static/|images/|fonts/|manifest.json).*)",
